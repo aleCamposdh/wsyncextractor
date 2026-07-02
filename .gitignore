@@ -1,0 +1,45 @@
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Entorno local
+.env
+.venv/
+venv/
+env/
+
+# Streamlit secrets (NUNCA subir al repo)
+.streamlit/secrets.toml
+
+# Base de datos de tokens OAuth (se regenera conectando)
+jobber_tokens.db
+*.db
+
+# Archivos de trabajo / exportaciones
+ordenes_*.csv
+ordenes_*.xlsx
+*.csv
+*.xlsx
+
+# Playwright / browsers
+/ms-playwright/
+
+# Capturas de debug
+/tmp/
+*.png
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Sistema operativo
+.DS_Store
+Thumbs.db

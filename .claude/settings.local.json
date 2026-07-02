@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python -c \"import ast; ast.parse\\(open\\(r'C:\\\\Users\\\\FroDev\\\\Downloads\\\\Proyectos\\\\ShineAndBright\\\\qbo\\\\parser.py'\\).read\\(\\)\\); ast.parse\\(open\\(r'C:\\\\Users\\\\FroDev\\\\Downloads\\\\Proyectos\\\\ShineAndBright\\\\qbo\\\\client.py'\\).read\\(\\)\\); print\\('OK'\\)\")"
+    ]
+  }
+}

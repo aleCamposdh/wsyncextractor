@@ -1,0 +1,1240 @@
+About Jobber
+Jobber is an award-winning business management platform for small home service businesses. Unlike spreadsheets or pen and paper, Jobber keeps track of everything in one place and automates day-to-day operations, so small businesses can provide 5-star service at scale. Jobber’s 300,000+ Home Service Pros have served over 12 million households in more than 47 countries.
+
+About Jobber's API
+Jobber's API gives developers the ability to access and modify data on users' accounts via GraphQL. You will be able to develop, ship, and monetize your own apps on top of Jobber's platform.
+
+Important Objects
+This section provides a high-level overview of the components in Jobber's API. Our list of field names is always changing. For the most up-to-date schema, please follow our Getting Started steps and view everything in GraphiQL.
+
+Clients
+Clients are the customers who pay for services on Jobber's platform - they belong to the Jobber account / service provider. Most other objects are linked to a client.
+
+type Client {
+  id: EncodedId! # The unique identifier
+  balance: Float! # The client's current balance
+  billingAddress: ClientAddress # The billing address of the client
+  clientProperties: PropertyConnection! # The properties belonging to the client which are serviced by the service provider
+  companyName: String # The name of the business
+  customFields: [CustomFieldUnion!]! # The custom fields set for this object
+  defaultEmails: [String!]! # The email address stored from previous communications
+  emails: [Email!]! # The email addresses belonging to the client
+  firstName: String! # The first name of the client
+  invoices: InvoiceConnection! # The invoices associated with the client
+  isArchivable: Boolean! # Is the client archivable
+  isArchived: Boolean! # Is the client archived
+  isCompany: Boolean! # Does the client represent a business
+  isLead: Boolean! # Is the client a prospective lead for the service provider
+  jobberWebUri: String! # The URI for the given record in Jobber Online
+  jobs: JobConnection! # The jobs associated with the client
+  lastName: String! # The last name of the client
+  name: String! # The primary name of the client
+  noteAttachments: ClientNoteFileConnection! # The note files attached to the client
+  notes: ClientNoteConnection! # The notes attached to the client
+  phones: [ClientPhoneNumber!]! # The phone numbers belonging to the client
+  quotes: QuoteConnection! # The quotes associated with the client
+  requests: RequestConnection! # The requests associated with the client
+  secondaryName: String # The secondary name of the client
+  tags: TagConnection! # The custom tags added to the client
+  title: String # The title of the client
+  workObjects: WorkObjectUnionConnection # The client's requests, quotes, jobs, and invoices sorted descending by modified date
+  createdAt: ISO8601DateTime! # The time the client was created
+  updatedAt: ISO8601DateTime! # The last time the client was updated
+}
+Requests
+Forms which a client can fill to request work to be done.
+
+type Request {
+  id: EncodedId! # The unique identifier
+  assessment: Assessment # The assessment associated with the work request
+  client: Client! # The client associated with the work request
+  companyName: String # The company name provided in the work request
+  contactName: String # The primary contact of the client requesting work
+  email: String # The contact email provided in the work request
+  jobberWebUri: String! # The URI for the given record in Jobber Online
+  jobs: JobConnection! # The jobs associated with the specific work request
+  noteAttachments: RequestNoteFileConnection! # The note files attached to the request
+  notes: RequestNoteUnionConnection! # The notes attached to the request
+  phone: String # The contact phone provided in the work request
+  property: Property # The property associated with the work request
+  quotes: QuoteConnection! # The quotes associated with the work request
+  referringClient: Client # The client that referred this work request, if this work request was referred
+  requestStatus: RequestStatusTypeEnum! # The status of the work request
+  source: String! # The source of the work request
+  title: String # The title of the work request
+  createdAt: ISO8601DateTime! # The time the work request was created
+  updatedAt: ISO8601DateTime! # The last time the work request was changed in a way that is meaningful to the Service Provider
+}
+Jobs
+A scheduled event where work will take place (i.e. lawn service every Friday at 3pm).
+
+type Job {
+  id: EncodedId! # The unique identifier
+  arrivalWindow: ArrivalWindow # The time window during which the SP can arrive at the job
+  billingType: BillingStrategy! # Invoicing strategy selected for the job
+  bookingConfirmationSentAt: ISO8601DateTime # The time when booking confirmation for the job was sent
+  client: Client! # The client on the job
+  customFields: [CustomFieldUnion!]! # The custom fields set for this object
+  defaultVisitTitle: String! # The default title for new visits
+  expenses: ExpenseConnection! # Expenses associated with the job
+  instructions: String # The instructions on a job
+  invoices: InvoiceConnection! # The invoices associated with the job
+  invoiceSchedule: InvoiceSchedule! # Schedule of invoices
+  jobberWebUri: String! # The URI for the given record in Jobber Online
+  jobCosting: JobCosting # The job costing fields representing the profitability of the job
+  jobNumber: Integer! # The number of the job
+  jobStatus: JobStatusTypeEnum! # The status of the job
+  jobType: JobTypeTypeEnum! # The type of job
+  lineItems: JobLineItemConnection! # The line items associated with the job
+  noteAttachments: JobNoteFileConnection! # The note files attached to the job
+  notes: JobNoteUnionConnection! # The notes attached to the job
+  paymentRecords: PaymentRecordConnection! # The payment records applied to this job's invoices
+  property: Property # The property associated with the job
+  quote: Quote # When applicable, the quote associated with the job
+  request: Request # When applicable, the request associated with the job
+  source: Source! # The originating source of the job
+  timesheetEntries: TimeSheetEntryConnection! # A list of all timesheet entries for this job
+  title: String # The scheduling information of the job
+  total: Float! # The total chargeable amount of the job
+  visits: VisitConnection! # The scheduled or unscheduled visits to the customer's property to complete the work associated with the job
+  visitsInfo: VisitsInfo! # Information about jobs visits
+  visitSchedule: VisitSchedule! # Schedule of visits
+  willClientBeAutomaticallyCharged: Boolean # The setting for automatic invoice charges
+  completedAt: ISO8601DateTime # The completion date of the job
+  createdAt: ISO8601DateTime! # The time the job was created
+  endAt: ISO8601DateTime # End date of the job
+  startAt: ISO8601DateTime # Start date of the job
+  updatedAt: ISO8601DateTime! # The last time the job was changed in a way that is meaningful to the Service Provider
+}
+Quotes
+A cost estimate which service providers sent to their clients before any work is done.
+
+type Quote {
+  id: EncodedId! # The unique identifier
+  amounts: QuoteAmounts! # All amounts related to the quote
+  client: Client # The client the quote was made for
+  customFields: [CustomFieldUnion!]! # The custom fields set for this object
+  depositRecords: PaymentRecordConnection! # The deposit records applied to the quote
+  jobberWebUri: String! # The URI for the given record in Jobber Online
+  jobs: JobConnection # Job IDs converted from this quote
+  lineItems: QuoteLineItemConnection! # The line items associated with the quote
+  message: String # The message to the client
+  noteAttachments: QuoteNoteFileConnection! # The note files attached to the quote
+  notes: QuoteNoteUnionConnection! # The notes attached to the quote
+  previewUrl: String! # The URL of the quote preview in client hub
+  property: Property # The property the quote was made for
+  quoteNumber: String! # A non-unique number assigned to the quote by a Service Provider
+  quoteStatus: QuoteStatusTypeEnum! # The current status the quote
+  request: Request # The request associated with the quote
+  title: String # The description of the quote
+  unallocatedDepositRecords: PaymentRecordConnection! # The deposit records that haven't been applied to an invoice and are not refunded
+  clientHubViewedAt: ISO8601DateTime # Time the quote was viewed at in Client Hub
+  createdAt: ISO8601DateTime! # The time the quote was created
+  transitionedAt: ISO8601DateTime! # Time the quote transitioned to its current status
+  updatedAt: ISO8601DateTime! # The last time the quote was changed in a way that is meaningful to the Service Provider
+}
+Invoices
+A receipt detailing the work done as well as the cost of the service provided.
+
+type Invoice {
+  id: EncodedId! # The unique identifier
+  amounts: InvoiceAmounts # All amounts related to the invoice
+  billingAddress: InvoiceBillingAddress # The billing address associated with the invoice
+  billingIsSameAsPropertyAddress: Boolean # Returns whether the billing address is the same as the property address
+  client: Client # The client the invoice is for
+  customFields: [CustomFieldUnion!]! # The custom fields set for this object
+  invoiceNumber: String! # The invoice number
+  invoiceNet: Int # Number of whole days after the issue_date that payment is due
+  invoiceStatus: InvoiceStatusTypeEnum! # The status of the invoice
+  jobberWebUri: String! # The URI for the given record in Jobber Online
+  jobs: JobConnection! # The jobs related to the invoice
+  lineItems: InvoiceLineItemConnection! # The line items on the invoice
+  linkedCommunications: MessageInterfaceConnection! # All messages related to this work object
+  message: String # The message on the invoice
+  noteAttachments: InvoiceNoteUnionConnection! # The note files attached to the invoice
+  notes: InvoiceNoteUnionConnection! # The notes attached to the invoice
+  paymentRecords: PaymentRecordConnection! # The payment records applied to the invoice
+  properties: PropertyConnection! # The properties related to the invoice
+  subject: String! # The subject of the invoice
+  taxCalculationMethod: String! # The tax calculation method on the invoice
+  taxRate: TaxRate # The tax rate information on the invoice
+  visits: VisitConnection! # The visits associated with the invoice
+  createdAt: ISO8601DateTime! # The date the invoice was created on
+  dateViewedInClientHub: ISO8601DateTime # The date the invoice was viewed in client hub
+  dueDate: ISO8601DateTime # The date the invoice is due on
+  issuedDate: ISO8601DateTime # The date the invoice was issued on
+  receivedDate: ISO8601DateTime # The date the invoice was received on
+  updatedAt: ISO8601DateTime! # The last time the invoice was changed in a way that is meaningful to the Service Provider
+}
+Accounts
+The Jobber account used for business operations by a Service Provider.
+
+type Account {
+  id: EncodedId! # The unique identifier
+  features: [AccountFeature!] # A list of features
+  industry: Industry # Industry associated with the account
+  name: String! # The name of the company
+  phone: String # The phone number of the account
+  createdAt: ISO8601DateTime! # The date the account was created
+}
+Assessments
+An assessment represents each time a Service Provider goes to a client property to assess and plan for future work.
+
+type Assessment {
+  id: EncodedId! # The unique identifier
+  allDay: Boolean! # Indicates whether the scheduled item is for a full day
+  assignedUsers: UserConnection # Users assigned to the scheduled item
+  client: Client! # The client for the assessment
+  createdBy: User # The user that created this scheduled item
+  duration: Int # Minute duration between start and end time
+  instructions: String # The instructions for the assessment
+  isComplete: Boolean! # Whether the assessment has been completed
+  isDefaultTitle: Boolean! # Indicates whether the title is the default
+  overrideOrder: Int # An override for ordering anytime and unscheduled items
+  property: Property # The property for the assessment
+  request: Request! # The parent request associated with this assessment
+  title: String # The title of the scheduled item
+  endAt: ISO8601DateTime # End date and time of the scheduled item. An unscheduled visit has both startAt and endAt being null
+  startAt: ISO8601DateTime # Start date and time of the scheduled item. An unscheduled visit has both startAt and endAt being null
+}
+Expenses
+An expense incurred by a Service Provider.
+
+type Expense {
+  id: EncodedId! # The unique identifier
+  date: ISO8601DateTime! # When the expense was incurred
+  description: String # The description of the expense
+  enteredBy: User # The user who filled out the expense
+  linkedJob: Job # The associated Job
+  paidBy: User # The user who paid the expense
+  reimbursableTo: User # The user receiving the reimbursed expense amount
+  title: String! # The title of the expense
+  total: Float # Total cost of the expense
+  createdAt: ISO8601DateTime! # When the expense was created
+  updatedAt: ISO8601DateTime! # When the expense was updated
+}
+Products or Services
+The collection of attributes that represent a product or service.
+
+type ProductOrService {
+  id: EncodedId! # The unique identifier
+  category: ProductsAndServicesCategory! # The item's category
+  defaultUnitCost: Float! # A product or service has a default price
+  description: String # The description of product or service
+  durationMinutes: Minutes # The duration of the service in minutes
+  internalUnitCost: Float # A product or service has a default internal unit cost
+  markup: Float # A product or service has a default markup
+  name: String! # The name of the product or service
+  onlineBookingEnabled: Boolean # Whether the service is enabled on the booking page
+  onlineBookingSortOrder: Int # Sort order of the service on the booking page
+  taxable: Boolean # A product or service can be taxable or non-taxable
+  visible: Boolean # A 'visible' product or service will show up as an autocomplete suggestion on quotes/jobs/invoice line items
+}
+Time Sheet Entries
+The recorded time of a Jobber user.
+
+type TimeSheetEntry {
+  id: EncodedId! # The unique identifier
+  approved: Boolean! # Indicates whether the time sheet entry is approved
+  approvedBy: User # User that approved this time sheet entry
+  client: Client # The client associated with the job linked to the time sheet entry
+  finalDuration: Seconds! # Duration of a stopped time sheet entry (resolves to 0 for ticking entries)
+  job: Job # Job linked to the timer
+  label: String # Label on the time sheet entry
+  labourRate: Float # Labour rate associated with this time sheet entry
+  note: String # Note attached
+  paidBy: User # User that marked this time sheet entry as paid
+  ticking: Boolean! # Flag indicating whether the timer is actively running or not
+  user: User # User the time sheet entry belongs to
+  visit: Visit # Visit linked to the time sheet entry
+  visitDurationTotal: Int! # Total duration in seconds the user worked on the related visit
+  createdAt: ISO8601DateTime! # The time the time sheet was created
+  endAt: ISO8601DateTime # Date and time the time sheet entry was completed (resolves to nil for time sheets without a time range)
+  startAt: ISO8601DateTime! # Date and time the time sheet entry was started
+  updatedAt: ISO8601DateTime! # The last time the time sheet was updated
+}
+Properties
+Properties are locations owned by Service Consumers where Service Providers provide service for.
+
+type Property {
+  id: EncodedId! # The unique identifier
+  address: PropertyAddress! # The address of the property
+  client: Client # The client associated with the property
+  customFields: [CustomFieldUnion!]! # The custom fields set for this object
+  isBillingAddress: Boolean # Whether the property is a billing address
+  jobberWebUri: String! # The URI for the given record in Jobber Online
+  jobs: JobConnection! # The jobs associated with the property
+  quotes: QuoteConnection! # The quotes associated with the property
+  requests: RequestConnection! # The requests associated with the property
+  routingOrder: Int # The routing order of the property
+  taxRate: TaxRate # The tax rate of the property
+}
+Users
+A user belongs to an account and generally completes work for clients.
+
+type User {
+  id: EncodedId! # The unique identifier
+  account: Account # The parent account for the user
+  address: UserAddress # The address of the user
+  apps: ApplicationConnection! # List of apps user has connected
+  customFields: [CustomFieldUnion!]! # The custom fields set for this object
+  email: UserEmail! # The email address of the user
+  firstDayOfTheWeek: UserFirstDayOfTheWeekEnum! # The first day of the week of the user's account
+  franchiseTokenLastFour: String # Returns the last four characters of the franchise access token for the user if one exists
+  isAccountAdmin: Boolean! # Is the user an administrator on their account
+  isAccountOwner: Boolean! # Is the user the owner of their account
+  isCurrentUser: Boolean! # Is this the authenticated user querying
+  name: Name! # The name of the user
+  phone: UserPhone # The phone of the user
+  status: UserStatusEnum! # The status of the user
+  timezone: Timezone # The timezone of the user's account
+  lastLoginAt: ISO8601DateTime # The date the user logged in last
+}
+Visits
+A visit that represents each time a Service Provider goes to a client property to complete work.
+
+type Visit {
+  id: EncodedId! # The unique identifier
+  actionsUponComplete: [VisitActionUponComplete!]! # The actions available after completing the visit
+  allDay: Boolean! # Indicates whether the scheduled item is for a full day
+  arrivalWindow: ArrivalWindow # The time window during which the SP can arrive at the visit
+  assignedUsers: UserConnection # Users assigned to the scheduled item
+  client: Client! # The Client for the visit
+  createdBy: User # The user that created this scheduled item
+  duration: Int # Minute duration between start and end time
+  instructions: String # The instructions for the visit
+  invoice: Invoice # The invoice for the visit
+  isComplete: Boolean! # Whether the visit has been completed
+  isDefaultTitle: Boolean! # Indicates whether the title is the default
+  isLastScheduledVisit: Boolean! # Whether the visit is the last visit for the associated job
+  job: Job! # The Job the visit is associated with
+  lineItems: JobLineItemConnection! # A list of all non-zero quantity line items for the visit
+  notes: JobNoteUnionConnection # The notes attached to the associated job
+  overrideOrder: Int # An override for ordering anytime and unscheduled items
+  property: Property! # The property for the visit
+  timeSheetEntries: TimeSheetEntryConnection # A list of all timesheet entries for this visit
+  title: String # The title of the scheduled item
+  visitStatus: VisitStatusTypeEnum! # The status of the visit
+  completedAt: ISO8601DateTime # The time that the visit was completed
+  createdAt: ISO8601DateTime! # The time that the visit was created
+  endAt: ISO8601DateTime # End date and time of the scheduled item. An unscheduled visit has both startAt and endAt being null
+  startAt: ISO8601DateTime # Start date and time of the scheduled item. An unscheduled visit has both startAt and endAt being null
+}
+
+
+
+Make an Endpoint Request
+Jobber's API is GraphQL based. This means all API requests are sent via POST to the following URL:
+
+https://api.getjobber.com/api/graphql
+
+As of Apr. 2, 2024, Jobber API's is no longer accepting any endpoint requests with the application/x-www-form-urlencoded or multipart/form-data content types. All GraphQL requests must be made with the application/json content type. If using the Guzzle HTTP client library, you can follow this guide for instructions on switching to the application/json content type.
+
+To make a successful request you must include a header with the Authorization key, and a value consisting of the access token you received via the OAuth 2.0 flow prepended with the word 'bearer'. See the example curl request below.
+
+curl -X POST -H "Authorization: Bearer <ACCESS_TOKEN>" "https://api.getjobber.com/api/graphql"
+Assuming the access token is valid, the API will process the request according to its API specifications. If the access token is invalid, the API will return a 401 "invalid_request" error.
+
+For more on how to use GraphQL, see the Official guides.
+
+API Queries
+In order to request data from the API you will need to include a GraphQL query in the payload of your API request.
+
+Query Example:
+
+query SampleQuery {
+  clients {
+    nodes {
+      id
+      firstName
+      lastName
+      billingAddress {
+        city
+      }
+    }
+    totalCount
+  }
+}
+API Mutations
+Any time you would like your app to modify any data in Jobber, a GraphQL mutation will be required.
+
+Mutation Example:
+
+mutation SampleMutation {
+  clientCreate(
+    input: {
+      firstName: "Jane"
+      lastName: "Doe"
+      companyName: "Jane's Automotive"
+      emails: [
+        { description: MAIN, primary: true, address: "jane.doe@example.com" }
+      ]
+    }
+  ) {
+    client {
+      id
+      firstName
+      lastName
+    }
+    userErrors {
+      message
+      path
+    }
+  }
+}
+ℹ️ When using the clientCreate mutation above, the name of your app will automatically be captured in the Lead source field that is built into Jobber. The lead source field for an app-created client cannot be edited by Jobber users. This functionality applies to all clients created after Sept. 16, 2024. The lead source field was not tracked automatically on clients created before Sept. 16, 2024, but this data may be backfilled in the future.
+
+
+Setting up Webhooks
+Webhooks allow for real-time data to be sent to your application when an event occurs on models within Jobber.
+
+Webhooks are configured at the application level and will trigger when an account with an installation performs the topic. As an example, if you've configured a webhook to listen to CLIENT_CREATE, whenever a user creates a new client, the URL provided will be sent a POST request with the details in the body. To see what details are sent, see the payload section.
+
+Delivery
+It is the responsibility of the app developer to monitor that all entered Webhook URLs can successfully receive an HTTP request. Jobber's Developer Center does not currently send automated notifications for unexpected Webhook responses (eg. HTTP status codes outside of the 2xx range).
+
+Webhook requests must be responded to within 1 second of receipt. To ensure adherence to this limit, webhook payloads must be processed asynchronously by the receiving system; your app needs to be resilient to a sudden high volume of requests.
+
+If an app's response times are outside of this limit, or if a large proportion of its responses are errors requiring retries, Jobber may disable that app's webhooks to limit the impact on other apps and systems.
+
+Jobber webhooks provide at-least-once delivery: in certain circumstances the same webhook may be sent multiple times. For example, if initial delivery appears to fail due to network timeout, the webhook will be re-sent. Apps should detect duplicate webhooks based on the payload data and handle them in an idempotent manner.
+
+Authorization
+To receive webhook data for a topic, you must have the appropriate read scope for that topic. For example, you must have access to read clients to access any of the CLIENT_X topics.
+
+Supported Topics
+To see a list of supported topics, see WebHookTopicEnum in our GraphQL schema. All supported topics are selectable when creating a webhook in the configuration of your application.
+
+Examples:
+
+CLIENT_CREATE
+CLIENT_UPDATE
+CLIENT_DESTROY
+Webhook Payload
+The webhook payload sent to the provided URL is introspectable in our GraphQL schema, see WebHookPayload for the most up-to-date payload, which is the result of the webHookEvent query.
+
+Example:
+
+{
+  "data": {
+    "webHookEvent": {
+      "topic": "CLIENT_CREATE",
+      "appId": "3ef22a50-072d-430c-a78f-b7646657560b",
+      "accountId": "MQ==",
+      "itemId": "MQ==",
+      "occurredAt": "2021-08-12T16:31:36-06:00"
+    }
+  }
+}
+ℹ️ The content type for any apps created before Apr. 11, 2022 is application/x-www-form-urlencoded. The content type for any apps created after Apr. 11, 2022 is application/json.
+
+ℹ️ The payload for any apps created before Dec. 8, 2023 will have the timestamp field named occuredAt. This field has been renamed to occurredAt for any apps created after Dec. 8, 2023.
+
+Verify Authenticity of the Webhook
+Before you respond to the webhook, you should verify that the webhook was sent from Jobber. A calculated signature is sent with every webhook, which you can use to verify the authenticity of the request.
+
+Each request will include a base64 encoded X-Jobber-Hmac-SHA256 header, which is generated using your app's OAuth client secret and the data sent in the webhook.
+
+Here is an example in Ruby as to how one might verify the request:
+
+MY_SECRET = "my app's OAuth client secret"
+
+# 'data' is the raw JSON payload
+# 'hmac_header' is the base64 encoded header `X-Jobber-Hmac-SHA256`
+def verify_webhook(data, hmac_header)
+  digest = OpenSSL::HMAC.digest(OpenSSL::Digest.new('sha256'), MY_SECRET, data)
+  calculated_hmac = Base64.strict_encode64(digest)
+
+  # https://api.rubyonrails.org/classes/ActiveSupport/SecurityUtils.html
+  # Compare strings of variable length, without exposing yourself to a timing attack
+  ActiveSupport::SecurityUtils.secure_compare(calculated_hmac, hmac_header)
+end
+
+verify_webhook(
+  "{\"data\":{\"webHookEvent\":{\"topic\":\"APP_CONNECT\",\"appId\":\"id\",\"accountId\":\"id\",\"itemId\":\"id\",\"occurredAt\":\"ISO8601DateTime\"}}}",
+  "ks1dre6TCHsMO2GVWnDYmx3ZrxubXGbCNZ5gPiXvP9E="
+)
+# => returns boolean value which determines authenticity
+
+
+
+Introduction
+Custom fields in Jobber are a popular feature available to Jobber customers on the Connect plan or higher. Custom fields allow data of various formats to be associated with the following six Jobber objects:
+
+Clients
+Properties
+Quotes
+Jobs
+Invoices
+Team members (coming soon)
+Custom fields are configured at the account level, and then they contain values at the object level. Typically an admin user must configure the custom fields they want on the account in Jobber, but our API also allows apps to configure new custom fields (as long as the Custom Field Configurations scope is approved for read and write access).
+
+The configurations contain customizable settings such as:
+
+The name of the custom field
+The option to automatically transfer the custom field value to other related objects
+The default value (if any)
+The value type:
+True/False
+Numeric
+Area (length x width)
+Dropdown
+Text
+Link
+The unit of measure (for numeric and area custom fields only)
+Whenever an app configures a custom field on a Jobber account, the app’s name and logo will be shown to the Jobber user in every case where they see the custom field value in Jobber’s UI. For example, if an app called “XYZ App” configured two custom fields on all job objects, the resulting user experience would look like the screenshot below.
+
+Custom fields on a job
+
+Currently, once the custom fields have been configured on the Jobber account, there is no way for the user to delete them from the account or reorder them, but these features will be added as an admin functionality in the future. For now, the app-configured custom fields are hidden from the user on the custom fields settings page in Jobber. An app also cannot delete a custom field configuration that it has created, but editing the name of previously created custom fields will be possible in the near future.
+
+Additional Capabilities Available
+App-configured custom fields have certain additional capabilities that are not available to typical custom fields that have been manually configured by a user.
+
+Link Type Custom Fields
+A new type of custom field called link is available to apps. It is configurable via the customFieldConfigurationCreateLink mutation. These custom fields always have two values: one for the text label of the link and another for the URL that the link should take the user to. For example, if a new link type custom field called “Link Example” were created, it would appear to the Jobber user as shown in the screenshot below.
+
+Link custom field
+
+Here is the example code used for configuring this new custom field on the account:
+
+mutation CreateLinkConfigurationExample {
+  customFieldConfigurationCreateLink(
+    input: {
+      appliesTo: ALL_JOBS
+      name: "Link Example"
+      transferable: false
+      readOnly: false
+      defaultValue: { text: "View link here", url: "https://www.example.com" }
+    }
+  ) {
+    customFieldConfiguration {
+      createdAt
+      id
+      name
+    }
+    userErrors {
+      message
+    }
+  }
+}
+Any Jobber reports that include custom fields will only provide the URL for link type custom fields and not the text label.
+
+Read-Only vs. Editable Custom Fields
+Although traditional custom fields are always editable by users in Jobber, app-configured custom fields can be configured to be read-only, so that users can only see their values but not modify them. All of the mutations for configuring new custom fields on an account have a Boolean input argument called readOnly that is used to set this option. It should be noted that the editable custom fields can be used to collect user input on various Jobber objects. For example, a “True/False” type custom field could be used to collect a user input on how an app/integration should behave with respect to a specific object. A “Dropdown” type custom field can also be used to collect a decision from a user in cases where there are multiple options.
+
+On edit screens for Jobber objects, the user may see messages like the one shown in the screenshot below for certain custom fields that are configured to be read-only:
+
+Link custom field edit
+
+Guidelines for Usage
+All read-only or editable custom fields that have been configured by apps will always be visible to Jobber users, so they should only ever be used for data that is meant to be visible to Jobber users. Other mechanisms should be used for any data that is intended to be hidden from Jobber users.
+
+A few other restrictions to be aware of are:
+
+Custom fields should be used for important data only
+For this reason a particular app can only create 5 custom field configurations on any particular Jobber object
+For any uses cases that would require more data, we recommend using notes instead
+An app cannot delete or archive any custom fields that it configured, but in the future it will be possible to rename them
+An app cannot input or overwrite the values of any custom fields that were configured by another app
+Handling App Disconnects and Reconnects
+When a jobber user disconnects your app, any custom fields that your app had configured will automatically be moved into an archived state. The Jobber user will also have the option to permanently delete some or all of those custom fields from their account. With this in mind, any apps utilizing custom fields should be able to properly handle app reconnects.
+
+When a reconnect happens for an app that previously configured custom fields, those custom fields will immediately be unarchived so they are ready to use again. Before configuring any new custom fields on an account, it's recommended to always use the customFieldConfigurations query first to determine if any of the custom fields you would like to configure already exist on the account. Otherwise you will encounter errors when trying to configure them.
+
+GraphQL Examples
+Reading Custom Field Configurations
+Example query for reading all of the custom field configurations on a particular Jobber account:
+
+query GetAllConfigurationsExample {
+  customFieldConfigurations(first: 50) {
+    nodes {
+      ... on CustomFieldConfigurationArea {
+        id
+        name
+        valueType
+        appliesTo
+        readOnly
+      }
+      ... on CustomFieldConfigurationDropdown {
+        id
+        name
+        valueType
+        appliesTo
+        readOnly
+      }
+      ... on CustomFieldConfigurationLink {
+        id
+        name
+        valueType
+        appliesTo
+        readOnly
+      }
+      ... on CustomFieldConfigurationNumeric {
+        id
+        name
+        valueType
+        appliesTo
+        readOnly
+      }
+      ... on CustomFieldConfigurationText {
+        id
+        name
+        valueType
+        appliesTo
+        readOnly
+      }
+      ... on CustomFieldConfigurationTrueFalse {
+        id
+        name
+        valueType
+        appliesTo
+        readOnly
+      }
+    }
+  }
+}
+It should be noted that the id from this query can be used in the customFieldConfigurationId input argument field of other mutations.
+
+Creating a Client with Custom Field Values
+mutation CreateClientExample {
+  clientCreate(
+    input: {
+      firstName: "Jane"
+      lastName: "Doe"
+      emails: [
+        { description: MAIN, primary: true, address: "jane.doe@example.com" }
+      ]
+      customFields: [
+        {
+          id: "Z2lkOi8vSm9iYmVyL0N1c3RvbUZpZWxkQ29uZmlndXJhdGlvbk51bWVyaWMvMTY4MDg5Mw=="
+          valueArea: { length: 10, width: 20 }
+        }
+      ]
+    }
+  ) {
+    client {
+      id
+      firstName
+      lastName
+    }
+    userErrors {
+      message
+      path
+    }
+  }
+}
+Editing a Client with Custom Field Values
+mutation EditClientExample {
+  clientEdit(
+    clientId: "Z2lkOi8vSm9iYmVyL1Byb3BlcnR5LzczODc0Nzc3"
+    input: {
+      customFields: [
+        {
+          id: "Z2lkOi8vSm9iYmVyL0N1c3RvbUZpZWxkQ29uZmlndXJhdGlvbk51bWVyaWMvMTY4MDg5Mw=="
+          valueNumeric: 5285
+        }
+      ]
+    }
+  ) {
+    client {
+      id
+      firstName
+      lastName
+    }
+    userErrors {
+      message
+      path
+    }
+  }
+}
+It should be noted that the id field in this case refers to the ID of a particular custom field value instead of the ID of the custom field configuration.
+
+In order to obtain this ID you will need to query the respective object and grab the ID from the payload.
+
+
+API Versioning
+API versioning allows Jobber to continuously evolve our platform and capabilities while offering third-party developers a predictable path for feature upgrades and deprecations.
+
+Our Approach
+Dangerous and breaking changes will be added in versioned releases
+Versions will be in date format (YYYY-MM-DD), and will be published to our changelog at irregular intervals whenever a breaking or dangerous change is made
+Old versions will be supported for a minimum of 12 months, and will be accessible for up to 18 months from their release date
+When using a version which becomes unsupported, the API will start sending warning messages to indicate that it can be removed and become inaccessible at any time (even if this includes breaking changes that could impact your app)
+After an API version becomes unsupported, it can be removed at any time
+Removal of API versions will be done in batches every 6 months
+For each batch of removals, warning emails will be sent out to the email address associated with any impacted developer accounts at least 3 months before the removal date
+Once an API version is removed, it becomes inaccessible, and any attempts to use that version will be automatically upgraded to the next supported version (oldest supported version)
+It's possible that the next supported version will not be listed in our changelog
+How to Specify a Version
+To specify a version, you must use the X-JOBBER-GRAPHQL-VERSION HTTP header and set it to one of our active versions. Specifying a version in the header is required for all apps.
+
+Version Information
+The response will include information about the API version your request is making. Version information is found under the extensions key.
+
+If you are requesting a version that will become unsupported in the next 3 months, a warning will be returned to indicate the expected unsupported date, and a recommendation of the latest version to upgrade to.
+
+  "versioning": {
+      "version": "2022-04-29",
+      "warning": "Support for API version 2022-04-29 is scheduled to stop on May 13, 2023.
+                  Upgrade to the latest version 2023-08-18 before that date.
+                  For more information: https://developer.getjobber.com/docs/using_jobbers_api/api_versioning"
+    }
+If you are requesting an unsupported version that hasn't been removed yet, a warning will be returned emphasizing that the version will be removed at any time.
+
+  "versioning": {
+      "version": "2022-04-29",
+      "warning": "API Version 2022-04-29 is no longer supported, and will be removed at any time without warning.
+                  Upgrade to the latest API version 2023-08-18 to ensure your app continues to function.
+                  For more information: https://developer.getjobber.com/docs/using_jobbers_api/api_versioning"
+    }
+If you are requesting a historic version that has been removed, your request will be automatically upgraded to the next supported version (oldest supported version). This version will be returned under the version key.
+
+How to Upgrade to a Newer Version
+We recommend you use the most recent active API version to benefit from bug fixes and schema improvements.
+
+To upgrade to a newer API version, consult the changelog to look for any breaking changes, which could impact your application. If you're using automatic code generation and type checking (such as with codegen), it could provide hints to what has broken.
+
+In some cases, we will deprecate fields before they're removed and give alternate fields, which could satisfy your use case.
+
+Deprecation Notice
+
+Once you've confirmed the new version works with your application (through manual and automated testing), update the X-JOBBER-GRAPHQL-VERSION header value in your production environment.
+
+API Rate Limits
+The GraphQL API is rate limited to keep the Jobber platform stable for all apps interacting with it.
+
+There are two rate limiters that Jobber currently has setup: a DDoS protection middleware and a GraphQL query cost calculation.
+
+DDoS Protection Middleware
+Jobber's DDoS protection middleware uses Rack::Attack to limit clients to 2500 requests per 5 minutes (2500 requests/300 s). This rate limitation is implemented on a per app/account basis, instead of being based on IP address. In the event that a particular app surpasses this rate limit, any subsequent requests made to that specific Jobber account will receive a "429 Too Many Requests" error.
+
+This rate is typically less restrictive than the GraphQL Query Cost detailed below, so if the limits below are respected, you are less likely to encounter 429 errors.
+
+GraphQL Query Cost Calculation
+The API uses a query cost based approach for rate limiting. Every app and account combination will have a maximum amount of points available to it that can be used to make queries. This app/account combination ensures that the rate limit of an app installed on one account will not effect the rate limit of the same app installed on a different account.
+
+Every query will cost a certain amount of points which will be subtracted from the points available to the app/account combination when the query has resolved. Over time, an amount of points will be restored which can be used to make more queries.
+
+The mechanism used to subtract and restore points over time is the leaky bucket algorithm.
+
+If the queries used are reasonably sized, it should be easy to stay within the limits. If you're finding it difficult to stay within these limits, consider introducing a delay between your queries and caching common results. Error handling should also be used as a mechanism to regulate your queries when being throttled.
+
+Response Format
+The response will include information about the cost of the query and the throttling status. This information is found under the extensions key:
+
+  "extensions": {
+    "cost": {
+      "requestedQueryCost": 142,
+      "actualQueryCost": 47,
+      "throttleStatus": {
+        "maximumAvailable": 10000,
+        "currentlyAvailable": 9953,
+        "restoreRate": 500
+      }
+    }
+  }
+requestedQueryCost
+This is how much the query was expected to cost. The response may not always contain the exact amount of data that was requested which is why this value can differ from the actualQueryCost. For example, a query might request the first 50 quotes for an account, but an account might have some amount of quotes less than that.
+
+If the requestedQueryCost is above the amount of points in currentlyAvailable, A throttled response will be returned:
+
+{
+  "errors": [
+    {
+      "message": "Throttled",
+      "extensions": {
+        "code": "THROTTLED",
+        "documentation": "https://developer.getjobber.com/docs/using_jobbers_api/api_rate_limits"
+      }
+    }
+  ],
+  "extensions": {
+    "cost": {
+      "requestedQueryCost": 10001,
+      "actualQueryCost": 0,
+      "throttleStatus": {
+        "maximumAvailable": 10000,
+        "currentlyAvailable": 10000,
+        "restoreRate": 500
+      }
+    }
+  }
+}
+Use this error response to ensure your query cost is below the maximumAvailable cost and that you're waiting for enough points to be restored to the currentlyAvailable amount.
+
+actualQueryCost
+The amount of points it actually cost to resolve the query. These points will be subtracted from the currentlyAvailable amount.
+
+maximumAvailable
+This is the maximum amount of points that will ever be available to query with. A query with a cost above this value will never resolve.
+
+currentlyAvailable
+The amount of points that are currently available to query with. This value will never be larger than maximumAvailable.
+
+restoreRate
+The rate at which points will be added to the currentlyAvailable amount every second.
+
+Cost Calculation
+All fields have a default value of 1 except for the edges, nodes and node connection fields which have a value of 0. Some fields that are more expensive to resolve may have a value larger than 1, but those will be a rare exception. Utilizing filter or sort arguments will not impact the cost calculation.
+
+As an example, the following query costs 7 points (7 fields in total):
+
+query {
+  quote(id: "MTc1") {
+    id
+    cost
+    title
+    client {
+      id
+      firstName
+    }
+  }
+}
+Connection Fields
+The cost of connection fields is calculated by taking the supplied first, or last argument and multiplying it by the number of requested fields. For example, the following query costs 50 points (10 nodes each containing 5 fields):
+
+query {
+  quotes(first: 10) {
+    edges {
+      node {
+        id
+        cost
+        quoteNumber
+        quoteStatus
+        title
+      }
+    }
+  }
+}
+If a first, or last argument is not supplied to a connection field, the API will have to assume the maximum number of fields will be returned when calculating the requestedQueryCost. All connection fields are configured to return a maximum of 100 nodes when no arguments are supplied. So the same query above without the first argument will have a requestedQueryCost of 500 points:
+
+query {
+  quotes {
+    edges {
+      node {
+        id
+        cost
+        quoteNumber
+        quoteStatus
+        title
+      }
+    }
+  }
+}
+In order to avoid expensive connection queries, you should always try to supply a first, or last argument and paginate if needed. These arguments can also be applied to nested connection types inside of your original query, so it is highly recommended to use them in the case of nested queries to avoid an unnecessarily high query cost.
+
+Avoiding Rate Limits
+To avoid being throttled by the API rate limits, it is recommended to utilize pagination to collect data in batches instead of all at once. Jobber’s GraphQL API uses cursor-based pagination based on the Relay framework. A sample query using cursors looks like this:
+
+query ($limit: Int, $cursor: String, $id: EncodedId!) {
+  job(id: $id) {
+    lineItems(first: $limit, after: $cursor) {
+      nodes {
+        name
+        quantity
+      }
+      pageInfo {
+        endCursor
+        hasNextPage
+      }
+    }
+  }
+}
+Using this approach, you can request a set amount of data at a given time so that you are not loading it all at once. If you do require large amounts of data, a timed delay can be added in between each API call so that your currentlyAvailable points can restore at the restoreRate.
+
+It is recommended to avoid using deeply nested queries whenever possible as the query cost can increase exponentially based on the number of nodes. An example of a deep nested query would be something like this:
+
+query SampleQuery {
+  jobs {
+    nodes {
+      id
+      jobNumber
+      visits {
+        nodes {
+          id
+          title
+          visitStatus
+        }
+      }
+    }
+  }
+}
+If visit information from every job is not required, then using the job query instead of the jobs query in the example above would reduce the nested layers of nodes. If nested queries must be used, pagination is always recommended on all connection types as a maximum number of 100 nodes will always be used in the query cost calculation when no arguments are supplied. Utilizing the two strategies above will help to avoid the rate limiter in a majority of situation
+
+Handling API Errors
+Type Nullability
+Queries which find by unique identifier will often be nullable as there's a chance an item can't be found - because the item doesn't belong to the account, the item doesn't exist or the item has been deleted. In the event an item cannot be found - instead of causing the entire query to fail, only the requested field will return null.
+
+When you see the ! operator within our GraphQL schema - it means there's a chance the data will not return null and may not require as much error handling and conditional logic. An argument which has the ! operator is required for query or mutation to occur.
+
+Consider the following query:
+
+query SampleQuery($id: EncodedId!) {
+  job(id: $id) {
+    # Job
+    id # EncodedId!
+    title # String
+  }
+}
+The job query will return a nullable Job type, which has two fields id and title. You should expect to encounter the following result if the query doesn't return a result:
+
+{
+  "data": {
+    "job": null
+  }
+}
+or encounter the following if the title for a job is not defined:
+
+{
+  "data": {
+    "job": {
+      "id": "MTIzNDU=",
+      "title": null
+    }
+  }
+}
+Scopes & Permissions
+Fields and types are secured by permissions and scopes - if you query for a field or type which the user doesn't have access to or you're requesting information not covered in your apps' scopes, it will result in an error like this:
+
+{
+  "data": null,
+  "errors": [
+    {
+      "message": "The field jobs on an object of type Query was hidden due to permissions",
+      "locations": [
+        {
+          "line": 2,
+          "column": 3
+        }
+      ],
+      "path": ["jobs"]
+    }
+  ]
+}
+App-level Authorization
+The user can choose to disconnect your app, in which case any queries you attempt to perform on the user will result in the following error:
+
+{
+  "message": "User has disconnected this app from their account. Please delete this token"
+}
+Jobber Preventative Errors
+In some cases, there may be some issues in Jobber's own backend. In this case, it is possible that apps which are known to make certain requests will be temporarily disabled as we apply any necessary fixes on our end. In such a case, some of your applications may receive the following error:
+
+{
+  "message": "Service temporarily unavailable"
+}
+Scalar Coercion
+We have implemented custom scalars to better represent the underlying data and enforce validation/formatting. If you provide invalid scalar values, you will receive an error similar to the following one:
+
+{
+  "errors": [
+    {
+      "message": "Variable $id of type EncodedId! was provided invalid value",
+      "locations": [
+        {
+          "line": 1,
+          "column": 19
+        }
+      ],
+      "extensions": {
+        "value": "1",
+        "problems": [
+          {
+            "path": [],
+            "explanation": "'1' is not a valid EncodedId",
+            "message": "'1' is not a valid EncodedId"
+          }
+        ]
+      }
+    }
+  ]
+}
+Rate-Limiting Errors
+In order to ensure applications do not perform too many expensive queries, negatively impacting the experience for other users and apps, a rate-limit is used. If you hit the limit, you will encounter a "THROTTLED" error which is documented here (under Requested Query Cost)
+
+Inactive User Error
+If the connected Jobber account becomes inactive, your connected application will no longer be able to make queries to the API. If you see the error below, your application should consider the account as disconnected, and you should stop making further queries or mutations on that access token.
+
+{
+  "error": {
+    "message": "This account is not active"
+  }
+}
+
+
+Unsupported Categories of Apps
+Although many forms of apps/integrations with Jobber's system can be supported through our GraphQL API, not every type of possible app will be approved to be listed in Jobber's App Marketplace. If you are planning to build out an app, but are unsure of whether it will be approved or not for any reason, please use our submit a request feature to confirm the proposed functionality with our support team.
+
+The following app and integration categories are not eligible for public Marketplace listing:
+
+Payment processing
+Financing
+Lending
+Insurance
+Debt Collections
+Full MCP integrations
+
+
+
+App Authorization (OAuth 2.0)
+Jobber uses OAuth 2.0 to authorize an app's access to a Jobber user's account.
+
+OAuth 2.0 is an authorization framework. It provides authorization flows for web applications, desktop applications, and mobile devices. Some apps that use OAuth are Facebook, GitHub, and Jobber.
+
+OAuth 2.0 gives applications limited access to user accounts on an HTTP service. It delegates user authentication to the service that hosts the user's account. It then authorizes third-party apps to access the user's account.
+
+OAuth 2.0 Roles
+OAuth 2.0 defines four roles:
+
+Resource Owner
+Client
+Resource Server
+Authorization Server
+The Resource Owner is a User
+The resource owner is the Jobber admin user who authorizes your application to access their Jobber Account. The application is granted an access level corresponding to the scopes specified when the app was created.
+
+The Client is an Application
+The client is the app that you want to give access to the user’s Jobber account. Two things must happen before the client gains access:
+
+The API must authenticate the user
+The user must authorize the client
+The Resource & Authorization Server is the API
+The resource server hosts the protected user accounts. The authorization server verifies the identity of the user and gives access tokens to the client. Jobber’s API fulfills both the resource and authorization server roles. We will refer to both of these roles combined, as the Service or API role.
+
+OAuth 2.0 Protocol Flow
+The client requests authorization from the user.
+The client receives an authorization grant from the authorization server.
+The client requests an access token from the authorization server. It presents authentication of its own identity. The client also presents the authorization grant.
+The authorization server issues an access token and refresh token to the client.
+The client requests resource from the resource server. It presents access token for authentication.
+The resource server serves the resource to the client.
+If the access token expires, the client requests a new one. (See below refresh token flow)
+Client ID and Client Secret
+After you add your app, Jobber will give you a client identifier and a client secret. The client ID is a publicly exposed string. Jobber uses it to identify the application. It's also used to build authorization URLs that are presented to users.
+
+Jobber uses the client secret to authenticate the identity of the application. You must keep it private between the application and the API.
+
+Authorization Grant
+In the Protocol Flow above, the first four steps cover obtaining an authorization grant and access token. Jobber implements the authorization code grant type.
+
+Authorization Code Grant Type
+The authorization code grant type is the most commonly used because it is optimized for server-side applications, where source code is not publicly exposed, and Client Secret confidentiality can be maintained. This is a redirection-based flow, which means that the application must be capable of interacting with the user-agent (i.e. the user's web browser) and receiving API authorization codes that are routed through the user-agent.
+
+Authorization Code Flow
+Step 1: Authorization Code Link
+There are two ways for the Authorization Code Flow to begin. Either the Jobber admin user clicks on the Connect button from the app listing in Jobber's App Marketplace, or the admin user accesses an authorization link of the form:
+
+https://api.getjobber.com/api/oauth/authorize?response_type=code&client_id=<CLIENT_ID>&redirect_uri=<CALLBACK_URL>&state=<STATE>
+Here is an explanation of the authorization link components:
+
+https://api.getjobber.com/api/oauth/authorize is the API authorization endpoint
+<CLIENT_ID> is where the app inserts its Client ID value that can be looked up from the Developer Center
+This is how the API identifies the app
+<CALLBACK_URL> is where Jobber will redirect the user immediately after the authorization code is granted
+This is set by the developer in the Developer Center and must be URL encoded
+<STATE> is a random string that the client has the option of generating so that it's possible to confirm that the same <STATE> string is returned with the granted authorization code (see Step 3)
+When the authorization flow is started from Jobber's App Marketplace, there is no <STATE> string provided
+Step 2: User Authorizes Application
+When the user clicks the link above or clicks on the Connect button from Jobber's App Marketplace, they will be prompted to authorize the scopes of the app (as configured in the Developer Center) and they must click on the Allow Access button to proceed. If the user was not already logged in to their Jobber account in the current browser, then they will first be prompted to log in before seeing the screen below:
+
+OAuth screen
+
+Step 3: Application Receives Authorization Code
+If the user chooses to approve the access request, Jobber redirects the user-agent to your application's redirect URI, along with an authorization code. The redirect would look something like this (assuming the application is "yourapplication.com"):
+
+https://yourapplication.com/callback?code=AUTHORIZATION_CODE&state=STATE
+
+At this point the client should check that the state parameter matches the value set in step 1 (if applicable).
+
+If the user chooses to deny the access request, the user-agent is handled based on how the OAuth flow was initiated:
+
+If the flow was started from the App Marketplace (“Connect” button): the user-agent is redirected back to Jobber's App Marketplace listing.
+If the flow was initiated externally (outside of Jobber): the user-agent is not redirected and remains on the current page. In this case, the cancel action does not trigger a redirect, and the user must close the tab or navigate back manually. Jobber does not currently support returning the user-agent to the original external source after a denied request.
+Step 4: Application Requests Access Token
+The application requests an access token from the API, by passing the authorization code along with authentication details, including the client secret, to the API token endpoint. Your application must use HTTPS, rather than HTTP, for this request. Here is an example POST request to Jobber's token endpoint:
+
+POST /api/oauth/token HTTP/1.1
+Host: api.getjobber.com
+Content-Type: application/x-www-form-urlencoded
+
+client_id=CLIENT_ID&client_secret=CLIENT_SECRET&grant_type=authorization_code&code=AUTHORIZATION_CODE&redirect_uri=REDIRECT_URI
+The result will look something like
+
+{
+  "access_token": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ...MH0.FAz4g5Q-UugrsjU4OuSB0PwHXDqsxcc-mRa4BW2lNJw",
+  "refresh_token": "5dd9bed1bd99b837cd3acaf2f59fb8fa"
+}
+This example does not contain a complete access token. The actual access token contains three components:
+
+encodeBase64(header) + '.' +
+encodeBase64(payload) + '.' +
+encodeBase64(signature)
+where the payload may be of interest as it contains an exp value that encodes the expiry time of the token. These are standard JWT tokens with signatures that are only verifiable by Jobber.
+
+Step 5: Application Receives Access Token
+If the authorization is valid, the API will return a JSON response containing the "access_token" and a "refresh_token" to your app.
+
+Your app is now authorized. It may use the access token to make GraphQL queries or mutations against Jobber's API. It is highly recommended to use the account query to collect the account name and id for easier tracking of which Jobber account the access token can be used for. This will also be important for tracking app disconnects in the future.
+
+The access token can continue to be used until it expires (default expiration time is 60 minutes) or until the app is disconnected. The refresh token may be used at any time to request a new access token.
+
+Refresh Token Flow
+After an access token expires, using it to make a request from the API will result in a 401 "Invalid Token Error". At this point the refresh token can be used to request a fresh access token from the authorization server. Note: You do not need to wait for the access token to expire to use the refresh token. It may be used at any time.
+
+There are a few cases where the refresh token may expire:
+
+App is disconnected from the account via either:
+Admin user disconnecting the app using the Disconnect button on the App Marketplace listing
+appDisconnect mutation getting used
+Automatic disconnection as a result of account churn, plan downgrade, or admin user deactivation
+Client Secret is rolled (note this cannot be done manually at this time)
+The app connection is re-authorized after a scope change
+After this process the new Authorization Code can be used to request a new access token and refresh token
+If both the access and refresh token are expired for whatever reason, an admin user will need to start the OAuth flow again. The app will prompt them to do so by sending them to Jobber and redirecting back to the app's Callback URL.
+
+Here is an example POST request to obtain a new access token via the refresh token:
+
+POST /api/oauth/token HTTP/1.1
+Host: api.getjobber.com
+Content-Type: application/x-www-form-urlencoded
+
+client_id=CLIENT_ID&client_secret=CLIENT_SECRET&grant_type=refresh_token&refresh_token=REFRESH_TOKEN
+In return you will receive the access token and a refresh token. It is important to note that when Refresh Token Rotation is OFF, then the above POST request will return the same refresh token as before. In this configuration, the refresh token is meant to be long-lived.
+
+If Refresh Token Rotation is ON, then the returned refresh token will be a new one every time. This new refresh token should always be saved, as it is the one to be used on the next request for a fresh access token. The same refresh token should never be sent to the API more than once in this Refresh Token Rotation configuration.
+
+Example Access Token Usage
+Once the application has an access token, it may use the token to access the user's account via the API until the token expires or is revoked.Here is an example of an API request using curl. Note that it includes the access token:
+
+curl -X POST -H "Authorization: Bearer ACCESS_TOKEN" "https://api.getjobber.com/api/graphql"
+
+Assuming the access token is valid, the API will process the request according to its API specifications. If the access token is invalid, the API will return a 401 "invalid_request" error.
+
+Handling App Disconnects
+In order to be published in Jobber's App Marketplace, it is required that your app properly handles disconnects. After a Jobber account connects to an app (meaning the authorization code has been granted), there are two mechanisms for the account to disconnect the app:
+
+A Jobber admin user in the account clicks the Disconnect button from the app listing page in Jobber's App Marketplace
+This will immediately invalidate all Access and Refresh Tokens and will also trigger the APP_DISCONNECT webhook for that account
+As part of the App Review Process, Jobber will always confirm that an app is subscribed and properly responding to this webhook before publishing in the App Marketplace
+If your software tool has an interface that indicates whether the app/integration
+is connected or not, it is critical that the app appears as disconnected after this webhook fires
+A user disconnects the app/integration from another system outside of Jobber
+If this workflow is supported, it is required that your app use the appDisconnect GraphQL mutation to notify Jobber that the account has been disconnected
+This will ensure that the app properly shows as disconnected on the Jobber side
+API Access and Refresh Tokens will also be invalidated using this process
+See below for an example of using the appDisconnect mutation:
+
+  mutation Disconnect {
+    appDisconnect {
+    app {
+        name
+        author
+    }
+    userErrors {
+        message
+    }
+  }
+}
+
+
+Refresh Token Rotation
+Refresh Token Rotation is a Developer Center feature that can be enabled when creating or editing your app to ensure that a new refresh token is generated every time a refresh token is used in the Refresh Token Flow.
+
+Although Refresh Token Rotation is ON for your app by default, you may turn it off while developing your app. If you would like to submit your app to be listed in Jobber's App Marketplace however, we would recommend against this. The Refresh Token Rotation must be ON in order to get your app published in Jobber's App Marketplace.
+
+On the request to get new tokens via the refresh token (as mentioned in the Refresh Token Flow), you will receive in return a new access token and refresh token. It is important to note that when Refresh Token Rotation is OFF then the same refresh token will be returned from the request. This means that the refresh token is meant to be long-lived.
+
+If Refresh Token Rotation is ON, then the returned refresh token will be a new one every time a request is made though the Refresh Token Flow. This new refresh token should always be saved, as it is the one to be used on the next request for a fresh access token. The same refresh token should never be sent to the API more than once in this Refresh Token Rotation configuration, and the old refresh token should be discarded after a new one is granted. See the code example below for a recommended method for continuously updating both tokens every time a refresh token is used.
+
+Ruby example
+def refresh_access_token
+  # create a hash with current stored access token and refresh token
+  account_tokens = {
+    token_type: "bearer",
+    access_token: account.jobber_access_token,
+    refresh_token: account.jobber_refresh_token,
+  }
+
+  # get the response with new access token and
+  # same refresh token (if Refresh Token Rotation is OFF),
+  # new refresh token (if Refresh Token Rotation is ON)
+  tokens = oauth2_refresh_access_token(account_tokens:)
+
+  # update the database with the new access token and refresh token
+  account.update_jobber_tokens(tokens:)
+end
+Response format
+With Refresh Token Rotation OFF the refresh token from the response will be exactly the same as the one used to make the request, and a warning message will also be returned in the response object.
+
+{
+  "warning": "Refresh token rotation is off. This setting is required for apps to be published in the Jobber App Marketplace. You can turn it on in the Developer Center. https://developer.getjobber.com/apps",
+  "access_token": "ENCRYPTED_ACCESS_TOKEN",
+  "refresh_token": "ENCRYPTED_REFRESH_TOKEN"
+}
+With Refresh Token Rotation ON the refresh token from the response will be different from the one used to make the request, and the new one should be stored in a way that overwrites the old one in your app. This new one is to be used on the next refresh token redemption. Every redemption should always be using a new and unique refresh token.
+
+If your app was created before Jan. 2nd, 2024, Jobber's API will have detection on attempts made to redeem old (invalidated) refresh tokens. The API will identify this in a warning message as follows:
+
+{
+  "warning": "Unexpected Refresh Token Redemption: A newer refresh token exists than the one that was used for token redemption on this request. Please check your app's handling of refresh token rotation. https://developer.getjobber.com/docs/building_your_app/refresh_token_rotation",
+  "access_token": "ENCRYPTED_ACCESS_TOKEN",
+  "refresh_token": "ENCRYPTED_REFRESH_TOKEN"
+}
+For apps created after Jan. 2nd, 2024, Jobber's API cannot detect if an old (invalidated) refresh token was attempted to be redeemed. The API will simply return the following error message:
+
+Error: The provided refresh token is not valid.
+
+Possible errors edge cases
+Here are potential edge cases that could lead to errors when using the refreshed token rotation:
+
+Stale Data:
+Developers retrieve the refresh_token and access_token from their database and store them in a variable, say variable A. They then verify the validity of the access_token, refresh it, and update the new tokens in their database. However, they overlook updating variable A, which still holds the old tokens. Consequently, they end up using the outdated refresh_token and access_token to query our API, leading to errors.
+
+Concurrent Background Jobs:
+It's common for multiple background jobs to request information from the Jobber API. The issue arises when these jobs attempt to refresh their tokens simultaneously, leading to a race condition. If the incorrect jobs save data to the database, they inadvertently store a refresh_token and access_token that are no longer valid.
+
+Note that these two scenarios can also occur in combination, further complicating the situation.
+
+
+Editing Your App
+To edit an app in the Draft/Changes Requested state, click Edit from the Actions button (...). If you add scopes for the app, you will see a re-authorization banner appear when logged into Jobber Online that will require you to allow the app access to the additional scopes. This banner only displays after adding new scopes. The same screen will appear when accessing GraphiQL from the Developer Center.
+
+Note: If you remove scopes, tokens will still have the old scopes. It is advised you disconnect and then reconnect to the app if you want to test the app with the fewer scopes.
+
+
+Testing Your Application
+Creating a Jobber Tester Account
+If you have not yet created a Jobber tester account, please see this section for more details.
+
+Linking Your Tester Account to Your App
+Allowing your app to access your test account's data is as simple as following the OAuth flow outlined in Authorizing an App.
+
+Testing Your Queries/Mutations in GraphiQL
+Before fully implementing all of the GraphQL queries and mutations that your app may be using, it is often easiest to test these out by first Making API Requests in GraphiQL.
+
+Testing Process for Apps to be Published
+In order for your app to be published in Jobber's App Marketplace, there are typically 3 main steps to the testing process:
+
+1. Internal Testing by Developer
+Your application should be sufficiently tested by you or your organization before submitting for Review
+Do not engage with any existing Jobber customers to test your application before first coordinating with your Jobber developer representative
+Mass distribution of URLs to connect to your app is prohibited unless authorized by Jobber
+API access will be blocked if your app is detected connecting to more than 5 paying Jobber accounts while still in Draft state
+Keep any announcements about your app private until your app has been approved through Jobber's App Review process
+Contact your Jobber developer representative or email api-support@getjobber.com if you would like to end-to-end test the "Connect" and "Disconnect" workflows for your app from Jobber's App Marketplace.
+2. App Review Testing by Jobber
+After your internal testing is completed, submit your App for Review and Jobber will verify your application's functionality and conduct and round of testing, submitting a request for changes if necessary
+If your app requires a login/subscription in order to be used, Jobber will require that a test account be created in your software for this testing
+The App Marketplace listing details (eg. Description, Features & Benefits, etc.) will also be reviewed in this phase
+Some example test cases include:
+Jobber users can successfully connect, disconnect, and reconnect your app (enabling proper functionality again)
+Proper usage and data formatting in any Jobber fields where data is input
+Any modifications/additions of client data (eg. contact information) are properly synced back to Jobber
+Duplication of data (eg. duplication of clients or properties) is prevented
+3. Beta Testing with Actual Jobber Customers
+Once your app has been approved by Jobber's App Review team, there will typically be a 2 week period of Beta testing with selected Jobber users/customers before your app is released to the general public
+Further changes may be requested based on feedback from Jobber users
+
+
+
