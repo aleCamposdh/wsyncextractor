@@ -59,10 +59,6 @@ SHINE_CLIENT_MAP = {
 # Requerido por transformer.py (no se usa en modo ShineAndBright)
 APEX_INSTRUCTION_REGEX = []
 
-# Credenciales QuickBooks Online
-QBO_CLIENT_ID     = _secret("QBO_CLIENT_ID",     "QBO_CLIENT_ID")
-QBO_CLIENT_SECRET = _secret("QBO_CLIENT_SECRET", "QBO_CLIENT_SECRET")
-
 SERVICE_ABBREV_MAP = {
     "ROUGH CLEAN":    "RC",
     "ROUGH RECLEAN":  "RRC",

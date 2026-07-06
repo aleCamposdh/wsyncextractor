@@ -34,9 +34,6 @@ from transformer import transformar_ordenes
 from jobber import storage, oauth
 from jobber.client import JobberClient, JobberAuthError
 from jobber.mappers import parse_total, validate_row
-from qbo import storage as qbo_storage, oauth as qbo_oauth
-from qbo.client import QBOClient, QBOAuthError
-from qbo.parser import parse_visits_csv
 
 # ── CSS ───────────────────────────────────────────────────────────────────────
 APP_CSS = """
@@ -391,36 +388,12 @@ for key, default in [
     ("df_result",     None),
     ("df_editor",     None),   # DataFrame con columnas Subir + Ya subido
     ("upload_report", None),   # Resultados del último batch Jobber
-    ("qbo_report",    None),   # Resultados del último batch QBO
 ]:
     if key not in st.session_state:
         st.session_state[key] = default
 
 
 # ── OAuth callbacks ───────────────────────────────────────────────────────────
-# QBO callback detectado primero (tiene realmId en URL)
-if qbo_oauth.handle_callback():
-    if st.session_state.get("qbo_just_connected"):
-        st.session_state.pop("qbo_just_connected", None)
-        try:
-            qbo = QBOClient()
-            info = qbo.fetch_company_info()
-            company = info.get("CompanyName", "QuickBooks")
-            qbo_tokens = qbo_storage.get_tokens()
-            if qbo_tokens:
-                qbo_storage.save_tokens(
-                    access_token=qbo_tokens["access_token"],
-                    refresh_token=qbo_tokens["refresh_token"],
-                    expires_at=_dt.fromisoformat(qbo_tokens["expires_at"]),
-                    realm_id=qbo_tokens["realm_id"],
-                    company_name=company,
-                )
-            st.success(t("qbo_connect_success", company=company))
-        except Exception as e:
-            st.error(t("qbo_connect_error", err=e))
-    elif err := st.session_state.pop("qbo_connect_error", None):
-        st.error(t("qbo_connect_error", err=err))
-
 if oauth.handle_callback():
     if st.session_state.get("jobber_just_connected"):
         st.session_state.pop("jobber_just_connected", None)
@@ -477,33 +450,6 @@ with st.sidebar:
         st.info(t("jobber_not_connected"))
         auth_url, _ = oauth.build_auth_url()
         st.link_button(t("btn_connect_jobber"), auth_url, use_container_width=True)
-
-    st.markdown("---")
-    st.caption(t("section_qbo"))
-
-    qbo_tokens = qbo_storage.get_tokens()
-    if qbo_tokens:
-        company_name = qbo_tokens.get("company_name") or "QuickBooks"
-        st.success(t("qbo_connected", company=company_name))
-        col_qt, col_qd = st.columns(2)
-        with col_qt:
-            if st.button(t("btn_test_qbo"), use_container_width=True):
-                try:
-                    qbo = QBOClient()
-                    info = qbo.fetch_company_info()
-                    st.toast(t("qbo_test_ok", company=info.get("CompanyName", "QBO")))
-                except QBOAuthError:
-                    st.warning(t("qbo_token_expired"))
-                except Exception as e:
-                    st.error(t("qbo_test_fail", err=e))
-        with col_qd:
-            if st.button(t("btn_disconnect_qbo"), use_container_width=True):
-                qbo_storage.clear_tokens()
-                st.rerun()
-    else:
-        st.info(t("qbo_not_connected"))
-        qbo_auth_url = qbo_oauth.build_auth_url()
-        st.link_button(t("btn_connect_qbo"), qbo_auth_url, use_container_width=True)
 
 
 # ── Contenido principal ───────────────────────────────────────────────────────
@@ -857,200 +803,6 @@ if st.session_state.upload_report:
             st.session_state.df_editor.loc[mask, col_uploaded] = False
             st.session_state.upload_report = None
             st.rerun()
-
-
-# ── Sección QBO: crear facturas desde Visits Report ──────────────────────────
-st.markdown("---")
-st.markdown(f"### {t('section_qbo_upload')}")
-st.caption(t("qbo_upload_hint"))
-
-if not qbo_storage.has_tokens():
-    st.warning(t("qbo_warning_not_connected"))
-else:
-    with st.expander("🔍 Debug — Campos personalizados QBO"):
-        try:
-            _qbo_dbg = QBOClient()
-
-            st.caption("Query CustomFieldDefinition (NEW custom fields):")
-            try:
-                _defs = _qbo_dbg.query("SELECT * FROM CustomFieldDefinition")
-                st.json(_defs)
-            except Exception as _q_err:
-                st.warning(f"Query falló: {_q_err}")
-
-            st.caption("GET /customfielddefinition (REST):")
-            try:
-                import requests as _req
-                _resp = _req.get(
-                    _qbo_dbg._url("customfielddefinition"),
-                    params={"minorversion": "75"},
-                    headers=_qbo_dbg._headers(),
-                    timeout=30,
-                )
-                st.write(f"Status: {_resp.status_code}")
-                st.json(_resp.json())
-            except Exception as _r_err:
-                st.warning(f"REST falló: {_r_err}")
-
-            st.caption("Mapping estático actual:")
-            st.json(_qbo_dbg.get_custom_field_ids())
-        except Exception as _e:
-            st.error(f"Error: {_e}")
-
-    uploaded_csv = st.file_uploader(
-        t("qbo_upload_label"),
-        type=["csv"],
-        key="qbo_visits_upload",
-    )
-
-    if uploaded_csv is not None:
-        try:
-            df_visits = pd.read_csv(uploaded_csv, dtype=str)
-            # Parser maneja conversión de monto (acepta "$1,234.00", negativos, etc.)
-            invoice_rows, skipped_rows = parse_visits_csv(df_visits)
-        except Exception as parse_err:
-            st.error(f"Error leyendo el CSV: {parse_err}")
-            invoice_rows, skipped_rows = [], []
-
-        if invoice_rows:
-            st.markdown(t("qbo_preview_title", n=len(invoice_rows)))
-            preview_df = pd.DataFrame([
-                {
-                    t("qbo_col_title"):    r["title"],
-                    t("qbo_col_customer"): f"{r['builder']} / {r['community']}" if r["community"] else r["builder"],
-                    "LOT":                 r.get("lot", ""),
-                    "Order #":             r.get("order_number", ""),
-                    "Cleaner":             r.get("cleaner", ""),
-                    t("qbo_col_amount"):   f"${r['amount']:,.2f}",
-                    "Fecha":               r["txn_date"],
-                }
-                for r in invoice_rows
-            ])
-            st.dataframe(preview_df, use_container_width=True, hide_index=True)
-
-            if skipped_rows:
-                with st.expander(f"⚠️ {len(skipped_rows)} filas omitidas del CSV"):
-                    st.dataframe(
-                        pd.DataFrame(skipped_rows),
-                        use_container_width=True,
-                        hide_index=True,
-                    )
-
-            if st.button(
-                t("btn_create_invoices", n=len(invoice_rows)),
-                type="primary",
-                use_container_width=True,
-            ):
-                st.session_state["trigger_qbo_upload"] = invoice_rows
-                st.rerun()
-        else:
-            st.info("No se encontraron facturas válidas en el archivo (sin EPO y con monto > 0).")
-            if skipped_rows:
-                with st.expander(f"⚠️ {len(skipped_rows)} filas omitidas"):
-                    st.dataframe(pd.DataFrame(skipped_rows), use_container_width=True, hide_index=True)
-
-
-# ── Crear facturas QBO (siguiente rerun) ──────────────────────────────────────
-if invoice_rows_pending := st.session_state.pop("trigger_qbo_upload", None):
-    total_inv  = len(invoice_rows_pending)
-    qbo_prog   = st.progress(0)
-    qbo_status = st.empty()
-    qbo_results = []
-
-    try:
-        qbo = QBOClient()
-    except QBOAuthError as e:
-        st.error(str(e))
-        st.stop()
-
-    # Precargar custom fields y términos una sola vez
-    qbo.get_custom_field_ids()
-    qbo.get_net15_term_id()
-
-    # Cache de clientes para el batch
-    _cust_cache: dict[str, str] = {}
-
-    import time as _time
-
-    for i, row in enumerate(invoice_rows_pending):
-        qbo_status.info(t("qbo_invoice_progress", i=i + 1, n=total_inv, title=row["title"]))
-        qbo_prog.progress(i / total_inv)
-
-        try:
-            cache_key = f"{row['builder']}||{row['community']}||{row.get('lot', '')}"
-            if cache_key not in _cust_cache:
-                _cust_cache[cache_key] = qbo.resolve_customer_id(
-                    row["builder"],
-                    row["community"],
-                    row.get("lot", ""),
-                    address=row.get("address"),
-                )
-            customer_id = _cust_cache[cache_key]
-
-            inv = qbo.create_invoice(
-                customer_id=customer_id,
-                txn_date=row["txn_date"],
-                amount=row["amount"],
-                service_type=row["service_type"],
-                order_number=row["order_number"],
-                cleaner=row.get("cleaner", ""),
-            )
-            qbo_results.append({
-                "title":      row["title"],
-                "customer":   f"{row['builder']} / {row['community']}" if row["community"] else row["builder"],
-                "amount":     row["amount"],
-                "ok":         True,
-                "invoice_no": str(inv.get("DocNumber", "")),
-                "error":      "",
-            })
-        except Exception as inv_err:
-            qbo_results.append({
-                "title":      row["title"],
-                "customer":   row["builder"],
-                "amount":     row["amount"],
-                "ok":         False,
-                "invoice_no": "",
-                "error":      str(inv_err),
-            })
-
-        _time.sleep(0.2)
-
-    qbo_prog.progress(1.0)
-    qbo_status.success(t("qbo_invoice_complete"))
-    st.session_state["qbo_report"] = qbo_results
-
-
-# ── Reporte QBO ───────────────────────────────────────────────────────────────
-if st.session_state.get("qbo_report"):
-    qbo_results = st.session_state["qbo_report"]
-    st.markdown(f"### {t('section_qbo_report')}")
-
-    ok_c   = sum(1 for r in qbo_results if r["ok"])
-    fail_c = len(qbo_results) - ok_c
-    c1, c2 = st.columns(2)
-    c1.metric("✅ Exitosas", ok_c)
-    c2.metric("❌ Fallidas", fail_c)
-
-    report_qbo = pd.DataFrame([
-        {
-            t("qbo_col_title"):    r["title"],
-            t("qbo_col_customer"): r["customer"],
-            t("qbo_col_amount"):   f"${r['amount']:,.2f}",
-            t("qbo_col_status"):   "✅" if r["ok"] else "❌",
-            t("qbo_col_invoice"):  r["invoice_no"],
-            t("qbo_col_error"):    r["error"],
-        }
-        for r in qbo_results
-    ])
-    st.dataframe(report_qbo, use_container_width=True, hide_index=True)
-
-    st.download_button(
-        label=t("btn_download_report"),
-        data=report_qbo.to_csv(index=False, encoding="utf-8-sig").encode("utf-8-sig"),
-        file_name="reporte_qbo.csv",
-        mime="text/csv",
-    )
-
 
 # ── Debug: introspección de schema (temporal) ────────────────────────────────
 if storage.has_tokens():
