@@ -157,7 +157,7 @@ def main_page():
     # Footer
     st.markdown("---")
     st.markdown(
-        "<p style='text-align: center; color: gray;'>Desarrollado por FroDev</p>",
+        "<p style='text-align: center; color: gray;'>Desarrollado por Alejandro Campos</p>",
         unsafe_allow_html=True
     )
 

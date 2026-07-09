@@ -50,7 +50,7 @@ SupplyPro (web scraping)
 |---|---|
 | Frontend / UI | Streamlit (Python) |
 | Deploy | Streamlit Cloud |
-| Repo | GitHub: https://github.com/FroDev-CR/WorkSyncExtractor |
+| Repo | GitHub: 
 | App URL | https://worksyncextractor.streamlit.app |
 | Scraping SupplyPro | Playwright (browser headless) |
 | API Jobber | GraphQL REST — `POST https://api.getjobber.com/api/graphql` |

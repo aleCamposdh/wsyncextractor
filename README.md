@@ -3,7 +3,7 @@
 Extrae órdenes de trabajo de SupplyPro automáticamente, permite revisarlas y editarlas, y las sube directo a Jobber como Jobs. La sincronización con QuickBooks Online la hace Jobber de forma nativa.
 
 **App:** https://worksyncextractor.streamlit.app  
-**Repo:** https://github.com/FroDev-CR/WorkSyncExtractor
+**Repo:**
 
 ---
 
@@ -114,7 +114,7 @@ A partir de ese momento, cada vez que el equipo marque una invoice como "sent" e
 
 ```bash
 # Clonar
-git clone https://github.com/FroDev-CR/WorkSyncExtractor.git
+git clone 
 cd WorkSyncExtractor
 
 # Instalar dependencias

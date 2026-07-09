@@ -91,5 +91,5 @@ STRINGS = {
     "sidebar_lang": "Idioma / Language",
     "sidebar_jobber_status": "Jobber Status",
     # Footer
-    "footer": "ShineAndBright · Developed by FroDev",
+    "footer": "ShineAndBright · Developed by Alejandro Campos",
 }

@@ -305,5 +305,5 @@ if __name__=='__main__':
     tk.Button(root, text='Importar a Quickbox',    command=importar_a_quickbox,
               bg='#00C2FF', fg='white', height=2, width=30).pack(pady=5)
 
-    tk.Label(root, text='By FroDev', font=('Arial',8)).place(x=10, y=360)
+    tk.Label(root, text='By Alejandro Campos', font=('Arial',8)).place(x=10, y=360)
     root.mainloop()
