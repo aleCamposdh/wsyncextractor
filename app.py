@@ -36,6 +36,12 @@ from config import (
 )
 from scraper import ejecutar_extraccion
 from transformer import transformar_ordenes
+from mungo.scraper import (
+    MungoAuthenticationError,
+    ejecutar_extraccion_mungo,
+    probar_conexion_mungo,
+)
+from mungo.transformer import transformar_ordenes_mungo
 from jobber import storage, oauth
 from jobber.client import JobberClient, JobberAuthError
 from jobber.mappers import parse_total, validate_row
@@ -507,29 +513,80 @@ else:
     mungo_credentials_ready = bool(MUNGO_USERNAME and MUNGO_PASSWORD)
     if mungo_credentials_ready:
         st.success(t("mungo_credentials_ready"))
+        if st.button(t("btn_test_mungo"), use_container_width=True):
+            with st.spinner(t("mungo_testing_connection")):
+                try:
+                    probar_conexion_mungo(MUNGO_USERNAME, MUNGO_PASSWORD)
+                    st.success(t("mungo_connection_ok"))
+                except MungoAuthenticationError as error:
+                    st.error(str(error))
+                except Exception as error:
+                    st.error(t("mungo_connection_error", err=error))
     else:
         st.warning(t("mungo_credentials_missing"))
-    st.caption(t("mungo_connection_help"))
-    st.info(t("mungo_filter_pending"))
 
-    default_to = date.today()
-    default_from = default_to - timedelta(days=30)
-    date_col_from, date_col_to = st.columns(2)
-    with date_col_from:
-        st.date_input(t("mungo_date_from"), value=default_from, key="mungo_date_from")
-    with date_col_to:
-        st.date_input(t("mungo_date_to"), value=default_to, key="mungo_date_to")
+    date_mode = st.radio(
+        t("mungo_date_mode"),
+        options=[t("mungo_one_date"), t("mungo_date_range")],
+        horizontal=True,
+        key="mungo_date_mode",
+    )
+    if date_mode == t("mungo_one_date"):
+        selected_date = st.date_input(
+            t("mungo_start_date"),
+            value=date.today(),
+            key="mungo_exact_start_date",
+        )
+        selected_from = selected_date
+        selected_to = selected_date
+    else:
+        default_to = date.today()
+        default_from = default_to - timedelta(days=30)
+        date_col_from, date_col_to = st.columns(2)
+        with date_col_from:
+            selected_from = st.date_input(
+                t("mungo_date_from"), value=default_from, key="mungo_date_from"
+            )
+        with date_col_to:
+            selected_to = st.date_input(
+                t("mungo_date_to"), value=default_to, key="mungo_date_to"
+            )
 
     st.success(t("mungo_mapping_ready"))
-    st.caption(t("mungo_mapping_help"))
-    st.button(
+    if st.button(
         t("btn_export_mungo"),
         type="primary",
         use_container_width=True,
-        disabled=True,
-        help=t("mungo_connector_pending"),
-    )
-    st.caption(t("mungo_connector_pending"))
+        disabled=not mungo_credentials_ready,
+    ):
+        with st.spinner(t("mungo_extracting_start_date")):
+            try:
+                df_raw = ejecutar_extraccion_mungo(
+                    MUNGO_USERNAME,
+                    MUNGO_PASSWORD,
+                    selected_from,
+                    selected_to,
+                    date_filter="start_date",
+                )
+                df_final = transformar_ordenes_mungo(df_raw)
+                if df_final.empty:
+                    st.warning(t("mungo_no_orders_for_date"))
+                    st.session_state.df_result = None
+                    st.session_state.df_editor = None
+                    st.session_state.df_source = None
+                else:
+                    st.session_state.df_result = df_final
+                    df_edit = df_final.copy()
+                    df_edit.insert(0, t("col_upload"), True)
+                    df_edit[t("col_uploaded")] = False
+                    st.session_state.df_editor = df_edit
+                    st.session_state.df_source = t("source_mungo")
+                    st.session_state.upload_report = None
+                    st.success(t("success_extracted", n=len(df_final)))
+            except MungoAuthenticationError as error:
+                st.error(str(error))
+            except Exception as error:
+                st.error(t("error_extraction", err=error))
 
 
 # ── Tabla editable ────────────────────────────────────────────────────────────

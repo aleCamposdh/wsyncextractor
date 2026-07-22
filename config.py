@@ -1,14 +1,20 @@
 import os
 import streamlit as st
-from dotenv import load_dotenv
+from dotenv import dotenv_values, load_dotenv
 
 
-# Desarrollo local: permite usar un archivo .env ignorado por Git.
-load_dotenv()
+# Desarrollo local: el .env del proyecto debe reemplazar valores antiguos que
+# hayan quedado exportados en la terminal. En Streamlit Cloud no existe .env,
+# por lo que sus Secrets continúan siendo la fuente utilizada en producción.
+load_dotenv(override=True)
+_LOCAL_ENV = dotenv_values(".env")
 
 
 def _secret(key: str, fallback_env: str) -> str:
     """Lee de st.secrets si existe, si no del entorno."""
+    local_value = str(_LOCAL_ENV.get(fallback_env) or "").strip()
+    if local_value:
+        return local_value
     try:
         return st.secrets[key]
     except Exception:
@@ -23,6 +29,9 @@ def _secret(key: str, fallback_env: str) -> str:
 
 def _optional_secret(key: str, fallback_env: str) -> str:
     """Lee una credencial opcional sin impedir que cargue el resto del app."""
+    local_value = str(_LOCAL_ENV.get(fallback_env) or "").strip()
+    if local_value:
+        return local_value
     env_value = os.environ.get(fallback_env, "").strip()
     if env_value:
         return env_value

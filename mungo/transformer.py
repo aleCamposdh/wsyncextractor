@@ -36,7 +36,7 @@ def _cell_text(value: object) -> str:
     """Convierte celdas de Excel a texto y elimina el sufijo .0 artificial."""
     if pd.isna(value):
         return ""
-    text = str(value).strip()
+    text = re.sub(r"\s+", " ", str(value)).strip()
     return re.sub(r"^(\d+)\.0$", r"\1", text)
 
 
@@ -93,6 +93,30 @@ def normalizar_fecha(value: object) -> str:
         return datetime(year, month, day).strftime("%m/%d/%Y")
     except ValueError:
         return ""
+
+
+def filtrar_por_start_date(
+    df_raw: pd.DataFrame,
+    date_from: date,
+    date_to: date,
+) -> pd.DataFrame:
+    """Filtra localmente la grilla Kova por su columna Start Date."""
+    if date_from > date_to:
+        raise ValueError("La fecha inicial no puede ser posterior a la fecha final.")
+    if df_raw is None or df_raw.empty:
+        return df_raw.copy() if df_raw is not None else pd.DataFrame()
+
+    available = {_column_key(column): column for column in df_raw.columns}
+    start_date_column = available.get("start date")
+    if start_date_column is None:
+        raise ValueError("La tabla de Mungo no contiene la columna Start Date.")
+
+    normalized = df_raw[start_date_column].map(normalizar_fecha)
+    parsed = pd.to_datetime(normalized, format="%m/%d/%Y", errors="coerce").dt.date
+    mask = parsed.map(
+        lambda value: bool(pd.notna(value) and date_from <= value <= date_to)
+    )
+    return df_raw.loc[mask].reset_index(drop=True)
 
 
 def transformar_ordenes_mungo(df_raw: pd.DataFrame) -> pd.DataFrame:
