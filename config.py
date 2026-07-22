@@ -1,5 +1,10 @@
 import os
 import streamlit as st
+from dotenv import load_dotenv
+
+
+# Desarrollo local: permite usar un archivo .env ignorado por Git.
+load_dotenv()
 
 
 def _secret(key: str, fallback_env: str) -> str:
@@ -16,9 +21,24 @@ def _secret(key: str, fallback_env: str) -> str:
         return val
 
 
+def _optional_secret(key: str, fallback_env: str) -> str:
+    """Lee una credencial opcional sin impedir que cargue el resto del app."""
+    env_value = os.environ.get(fallback_env, "").strip()
+    if env_value:
+        return env_value
+    try:
+        return str(st.secrets.get(key, "")).strip()
+    except Exception:
+        return ""
+
+
 # Credenciales SupplyPro — leer de secrets/env, nunca hardcodeadas
 SUPPLYPRO_USERNAME = _secret("SUPPLYPRO_USERNAME", "SUPPLYPRO_USERNAME")
 SUPPLYPRO_PASSWORD = _secret("SUPPLYPRO_PASSWORD", "SUPPLYPRO_PASSWORD")
+
+# Credenciales Kova (Mungo Homes). La sesión se abrirá en cada extracción.
+MUNGO_USERNAME = _optional_secret("MUNGO_USERNAME", "MUNGO_USERNAME")
+MUNGO_PASSWORD = _optional_secret("MUNGO_PASSWORD", "MUNGO_PASSWORD")
 
 SUPPLYPRO_URL = "https://www.hyphensolutions.com/MH2Supply/Login.asp"
 

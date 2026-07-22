@@ -6,6 +6,21 @@ STRINGS = {
     "app_subtitle": "Automatic order extraction",
     # Main button
     "btn_export": "🚀 Export SupplyPro Orders",
+    "source_label": "Order source",
+    "source_supplypro": "SupplyPro",
+    "source_mungo": "Mungo Homes",
+    # Mungo Homes
+    "mungo_section_title": "🏠 Mungo Homes Orders",
+    "mungo_credentials_ready": "✅ Mungo credentials configured.",
+    "mungo_credentials_missing": "⚠️ MUNGO_USERNAME and MUNGO_PASSWORD are missing from secrets or .env.",
+    "mungo_connection_help": "Kova does not require OAuth: the system will sign in automatically with these credentials for each extraction and sign out when finished.",
+    "mungo_date_from": "From",
+    "mungo_date_to": "To",
+    "mungo_filter_pending": "The exact Kova field for this date range is still to be confirmed.",
+    "mungo_mapping_ready": "The output columns and transformation rules are already prepared.",
+    "mungo_mapping_help": "Activity (without the prefix before the first hyphen) / LOT Lot# / Community / PO#. Address is used as the property address, PO Amount as total, and Start Date as the date.",
+    "btn_export_mungo": "🚀 Extract Mungo Orders",
+    "mungo_connector_pending": "Extraction will be enabled after confirming the correct filter under Purchase Orders.",
     # Spinner / progress messages
     "spinner_extracting": "Extracting orders...",
     "info_connecting": "⏳ Connecting to SupplyPro...",

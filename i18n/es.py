@@ -6,6 +6,21 @@ STRINGS = {
     "app_subtitle": "Extracción automática de órdenes",
     # Botón principal
     "btn_export": "🚀 Exportar órdenes de SupplyPro",
+    "source_label": "Fuente de las órdenes",
+    "source_supplypro": "SupplyPro",
+    "source_mungo": "Mungo Homes",
+    # Mungo Homes
+    "mungo_section_title": "🏠 Órdenes de Mungo Homes",
+    "mungo_credentials_ready": "✅ Credenciales de Mungo configuradas.",
+    "mungo_credentials_missing": "⚠️ Faltan MUNGO_USERNAME y MUNGO_PASSWORD en los secretos o en .env.",
+    "mungo_connection_help": "Kova no requiere OAuth: el sistema iniciará sesión automáticamente con estas credenciales en cada extracción y cerrará la sesión al terminar.",
+    "mungo_date_from": "Desde",
+    "mungo_date_to": "Hasta",
+    "mungo_filter_pending": "El campo exacto de Kova que se usará para este rango todavía está por confirmar.",
+    "mungo_mapping_ready": "El formato de columnas y las reglas de transformación ya están preparados.",
+    "mungo_mapping_help": "Activity (sin el prefijo anterior al primer guión) / LOT Lot# / Community / PO#. Address se usa como dirección, PO Amount como total y Start Date como fecha.",
+    "btn_export_mungo": "🚀 Extraer órdenes de Mungo",
+    "mungo_connector_pending": "La extracción se habilitará cuando confirmemos el filtro correcto dentro de Purchase Orders.",
     # Spinner / mensajes de progreso
     "spinner_extracting": "Extrayendo órdenes...",
     "info_connecting": "⏳ Conectando a SupplyPro...",
