@@ -111,6 +111,7 @@ STRINGS = {
     # Sidebar
     "sidebar_lang": "Idioma / Language",
     "sidebar_jobber_status": "Estado Jobber",
+    "sidebar_mungo_status": "Estado Mungo Homes",
     # Footer
     "footer": "ShineAndBright · Desarrollado por Alejandro Campos",
 }

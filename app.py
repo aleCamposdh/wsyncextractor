@@ -422,6 +422,8 @@ if oauth.handle_callback():
 
 
 # ── Sidebar ───────────────────────────────────────────────────────────────────
+mungo_credentials_ready = bool(MUNGO_USERNAME and MUNGO_PASSWORD)
+
 with st.sidebar:
     st.markdown("## ✨ ShineAndBright")
     st.markdown("---")
@@ -462,6 +464,22 @@ with st.sidebar:
         st.info(t("jobber_not_connected"))
         auth_url, _ = oauth.build_auth_url()
         st.link_button(t("btn_connect_jobber"), auth_url, use_container_width=True)
+
+    st.markdown("---")
+    st.caption(t("sidebar_mungo_status"))
+    if mungo_credentials_ready:
+        st.success(t("mungo_credentials_ready"))
+        if st.button(t("btn_test_mungo"), use_container_width=True):
+            with st.spinner(t("mungo_testing_connection")):
+                try:
+                    probar_conexion_mungo(MUNGO_USERNAME, MUNGO_PASSWORD)
+                    st.success(t("mungo_connection_ok"))
+                except MungoAuthenticationError as error:
+                    st.error(str(error))
+                except Exception as error:
+                    st.error(t("mungo_connection_error", err=error))
+    else:
+        st.warning(t("mungo_credentials_missing"))
 
 
 # ── Contenido principal ───────────────────────────────────────────────────────
@@ -510,21 +528,6 @@ if source_choice == t("source_supplypro"):
                 st.info(t("info_retry"))
 else:
     st.markdown(f"### {t('mungo_section_title')}")
-    mungo_credentials_ready = bool(MUNGO_USERNAME and MUNGO_PASSWORD)
-    if mungo_credentials_ready:
-        st.success(t("mungo_credentials_ready"))
-        if st.button(t("btn_test_mungo"), use_container_width=True):
-            with st.spinner(t("mungo_testing_connection")):
-                try:
-                    probar_conexion_mungo(MUNGO_USERNAME, MUNGO_PASSWORD)
-                    st.success(t("mungo_connection_ok"))
-                except MungoAuthenticationError as error:
-                    st.error(str(error))
-                except Exception as error:
-                    st.error(t("mungo_connection_error", err=error))
-    else:
-        st.warning(t("mungo_credentials_missing"))
-
     date_mode = st.radio(
         t("mungo_date_mode"),
         options=[t("mungo_one_date"), t("mungo_date_range")],
