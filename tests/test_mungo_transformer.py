@@ -4,6 +4,7 @@ from datetime import date
 import pandas as pd
 
 from mungo.transformer import (
+    construir_direccion,
     filtrar_por_start_date,
     limpiar_activity,
     normalizar_fecha,
@@ -34,7 +35,7 @@ class MungoTransformerTests(unittest.TestCase):
         self.assertEqual(result.iloc[0].to_dict(), {
             "Client Name": "Mungo Homes",
             "Job title Final": "Rough Clean / LOT 37 / RYDER PARK / 49071413",
-            "Full Property Address": "3622 Teslow Drive",
+            "Full Property Address": "3622 Teslow Drive, Charlotte, NC 28215",
             "total": "190.61",
             "Start Date": "07/01/2026",
         })
@@ -43,6 +44,24 @@ class MungoTransformerTests(unittest.TestCase):
         self.assertEqual(normalizar_total("$1,234.56"), "1234.56")
         self.assertEqual(normalizar_total("1.234,56"), "1234.56")
         self.assertEqual(normalizar_fecha("7/1/2026"), "07/01/2026")
+
+    def test_completes_address_from_community(self):
+        self.assertEqual(
+            construir_direccion("3608 Teslow Drive", "Willowbrook"),
+            "3608 Teslow Drive, Shelby, NC 28150",
+        )
+        self.assertEqual(
+            construir_direccion("144 Lasso Lane", "RYDER PARK"),
+            "144 Lasso Lane, Charlotte, NC 28215",
+        )
+        self.assertEqual(
+            construir_direccion("100 Main Street", "westview"),
+            "100 Main Street, Charlotte, NC 28214",
+        )
+
+    def test_does_not_duplicate_existing_address_suffix(self):
+        address = "3608 Teslow Drive, Shelby, NC 28150"
+        self.assertEqual(construir_direccion(address, "WILLOWBROOK"), address)
 
     def test_missing_columns_are_reported(self):
         with self.assertRaisesRegex(ValueError, "PO#"):

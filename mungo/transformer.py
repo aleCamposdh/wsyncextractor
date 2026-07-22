@@ -26,6 +26,12 @@ REQUIRED_SOURCE_COLUMNS = {
     "start date": "Start Date",
 }
 
+COMMUNITY_ADDRESS_SUFFIX = {
+    "WILLOWBROOK": "Shelby, NC 28150",
+    "RYDER PARK": "Charlotte, NC 28215",
+    "WESTVIEW": "Charlotte, NC 28214",
+}
+
 
 def _column_key(value: object) -> str:
     """Normaliza encabezados sin perder caracteres significativos como '#'."""
@@ -46,6 +52,18 @@ def limpiar_activity(value: object) -> str:
     if "-" in text:
         text = text.split("-", 1)[1]
     return text.strip()
+
+
+def construir_direccion(address: object, community: object) -> str:
+    """Completa la calle con ciudad, estado y ZIP según la comunidad."""
+    street = _cell_text(address)
+    community_key = _cell_text(community).upper()
+    suffix = COMMUNITY_ADDRESS_SUFFIX.get(community_key, "")
+    if not street or not suffix:
+        return street
+    if street.casefold().endswith(suffix.casefold()):
+        return street
+    return f"{street.rstrip(', ')}, {suffix}"
 
 
 def normalizar_total(value: object) -> str:
@@ -143,7 +161,10 @@ def transformar_ordenes_mungo(df_raw: pd.DataFrame) -> pd.DataFrame:
     result = pd.DataFrame({
         "Client Name": "Mungo Homes",
         "Job title Final": activity + " / LOT " + lot + " / " + community + " / " + po_number,
-        "Full Property Address": df["Address"].map(_cell_text),
+        "Full Property Address": [
+            construir_direccion(address, community_name)
+            for address, community_name in zip(df["Address"], df["Community"])
+        ],
         "total": df["PO Amount"].map(normalizar_total),
         "Start Date": df["Start Date"].map(normalizar_fecha),
     })
