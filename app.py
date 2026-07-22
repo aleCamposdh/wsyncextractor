@@ -4,7 +4,7 @@ ShineAndBright — SupplyPro Extractor + Jobber Uploader
 import streamlit as st
 import pandas as pd
 from io import BytesIO, StringIO
-from datetime import datetime as _dt
+from datetime import date, timedelta
 import subprocess
 import sys
 
@@ -28,9 +28,20 @@ def install_playwright():
 install_playwright()
 
 from i18n import t
-from config import SUPPLYPRO_USERNAME, SUPPLYPRO_PASSWORD
+from config import (
+    MUNGO_PASSWORD,
+    MUNGO_USERNAME,
+    SUPPLYPRO_PASSWORD,
+    SUPPLYPRO_USERNAME,
+)
 from scraper import ejecutar_extraccion
 from transformer import transformar_ordenes
+from mungo.scraper import (
+    MungoAuthenticationError,
+    ejecutar_extraccion_mungo,
+    probar_conexion_mungo,
+)
+from mungo.transformer import transformar_ordenes_mungo
 from jobber import storage, oauth
 from jobber.client import JobberClient, JobberAuthError
 from jobber.mappers import parse_total, validate_row
@@ -387,6 +398,7 @@ for key, default in [
     ("lang",          "es"),
     ("df_result",     None),
     ("df_editor",     None),   # DataFrame con columnas Subir + Ya subido
+    ("df_source",     None),   # SupplyPro o Mungo Homes
     ("upload_report", None),   # Resultados del último batch Jobber
 ]:
     if key not in st.session_state:
@@ -458,39 +470,130 @@ st.markdown(f"### {t('app_subtitle')}")
 st.markdown("---")
 
 # ── Extracción ────────────────────────────────────────────────────────────────
-if not storage.has_tokens():
-    st.warning(t("warning_connect_jobber_first"))
+source_choice = st.radio(
+    t("source_label"),
+    options=[t("source_supplypro"), t("source_mungo")],
+    horizontal=True,
+    key="order_source_choice",
+)
 
-if st.button(t("btn_export"), type="primary", use_container_width=True, disabled=not storage.has_tokens()):
-    with st.spinner(t("spinner_extracting")):
-        try:
-            st.info(t("info_connecting"))
-            df_raw = ejecutar_extraccion(SUPPLYPRO_USERNAME, SUPPLYPRO_PASSWORD)
+if source_choice == t("source_supplypro"):
+    if not storage.has_tokens():
+        st.warning(t("warning_connect_jobber_first"))
 
-            st.info(t("info_processing"))
-            df_final = transformar_ordenes(df_raw, "ShineAndBright")
+    if st.button(t("btn_export"), type="primary", use_container_width=True, disabled=not storage.has_tokens()):
+        with st.spinner(t("spinner_extracting")):
+            try:
+                st.info(t("info_connecting"))
+                df_raw = ejecutar_extraccion(SUPPLYPRO_USERNAME, SUPPLYPRO_PASSWORD)
 
-            if len(df_final) == 0:
-                st.warning(t("warning_no_orders"))
-                st.session_state.df_result  = None
-                st.session_state.df_editor  = None
-            else:
-                st.session_state.df_result = df_final
-                # Inicializar tabla editable con columnas de control
-                df_edit = df_final.copy()
-                df_edit.insert(0, t("col_upload"),   True)
-                df_edit[t("col_uploaded")] = False
-                st.session_state.df_editor  = df_edit
-                st.session_state.upload_report = None
-                st.success(t("success_extracted", n=len(df_final)))
+                st.info(t("info_processing"))
+                df_final = transformar_ordenes(df_raw, "ShineAndBright")
 
-        except Exception as e:
-            st.error(t("error_extraction", err=e))
-            st.info(t("info_retry"))
+                if len(df_final) == 0:
+                    st.warning(t("warning_no_orders"))
+                    st.session_state.df_result = None
+                    st.session_state.df_editor = None
+                    st.session_state.df_source = None
+                else:
+                    st.session_state.df_result = df_final
+                    df_edit = df_final.copy()
+                    df_edit.insert(0, t("col_upload"), True)
+                    df_edit[t("col_uploaded")] = False
+                    st.session_state.df_editor = df_edit
+                    st.session_state.df_source = t("source_supplypro")
+                    st.session_state.upload_report = None
+                    st.success(t("success_extracted", n=len(df_final)))
+
+            except Exception as e:
+                st.error(t("error_extraction", err=e))
+                st.info(t("info_retry"))
+else:
+    st.markdown(f"### {t('mungo_section_title')}")
+    mungo_credentials_ready = bool(MUNGO_USERNAME and MUNGO_PASSWORD)
+    if mungo_credentials_ready:
+        st.success(t("mungo_credentials_ready"))
+        if st.button(t("btn_test_mungo"), use_container_width=True):
+            with st.spinner(t("mungo_testing_connection")):
+                try:
+                    probar_conexion_mungo(MUNGO_USERNAME, MUNGO_PASSWORD)
+                    st.success(t("mungo_connection_ok"))
+                except MungoAuthenticationError as error:
+                    st.error(str(error))
+                except Exception as error:
+                    st.error(t("mungo_connection_error", err=error))
+    else:
+        st.warning(t("mungo_credentials_missing"))
+
+    date_mode = st.radio(
+        t("mungo_date_mode"),
+        options=[t("mungo_one_date"), t("mungo_date_range")],
+        horizontal=True,
+        key="mungo_date_mode",
+    )
+    if date_mode == t("mungo_one_date"):
+        selected_date = st.date_input(
+            t("mungo_start_date"),
+            value=date.today(),
+            key="mungo_exact_start_date",
+        )
+        selected_from = selected_date
+        selected_to = selected_date
+    else:
+        default_to = date.today()
+        default_from = default_to - timedelta(days=30)
+        date_col_from, date_col_to = st.columns(2)
+        with date_col_from:
+            selected_from = st.date_input(
+                t("mungo_date_from"), value=default_from, key="mungo_date_from"
+            )
+        with date_col_to:
+            selected_to = st.date_input(
+                t("mungo_date_to"), value=default_to, key="mungo_date_to"
+            )
+
+    st.success(t("mungo_mapping_ready"))
+    if st.button(
+        t("btn_export_mungo"),
+        type="primary",
+        use_container_width=True,
+        disabled=not mungo_credentials_ready,
+    ):
+        with st.spinner(t("mungo_extracting_start_date")):
+            try:
+                df_raw = ejecutar_extraccion_mungo(
+                    MUNGO_USERNAME,
+                    MUNGO_PASSWORD,
+                    selected_from,
+                    selected_to,
+                    date_filter="start_date",
+                )
+                df_final = transformar_ordenes_mungo(df_raw)
+                if df_final.empty:
+                    st.warning(t("mungo_no_orders_for_date"))
+                    st.session_state.df_result = None
+                    st.session_state.df_editor = None
+                    st.session_state.df_source = None
+                else:
+                    st.session_state.df_result = df_final
+                    df_edit = df_final.copy()
+                    df_edit.insert(0, t("col_upload"), True)
+                    df_edit[t("col_uploaded")] = False
+                    st.session_state.df_editor = df_edit
+                    st.session_state.df_source = t("source_mungo")
+                    st.session_state.upload_report = None
+                    st.success(t("success_extracted", n=len(df_final)))
+            except MungoAuthenticationError as error:
+                st.error(str(error))
+            except Exception as error:
+                st.error(t("error_extraction", err=error))
 
 
 # ── Tabla editable ────────────────────────────────────────────────────────────
-if st.session_state.df_editor is not None:
+if (
+    st.session_state.df_editor is not None
+    and st.session_state.df_source == source_choice
+):
     df_edit = st.session_state.df_editor
     col_subir    = t("col_upload")
     col_uploaded = t("col_uploaded")
@@ -570,13 +673,18 @@ if st.session_state.df_editor is not None:
     st.markdown(f"### {t('section_download')}")
 
     df_download = edited.drop(columns=[col_subir, col_uploaded], errors="ignore")
+    download_slug = (
+        "mungo_homes"
+        if st.session_state.df_source == t("source_mungo")
+        else "shineandbright"
+    )
     col_csv, col_xlsx = st.columns(2)
     with col_csv:
         csv_data = df_download.to_csv(index=False, encoding="utf-8-sig")
         st.download_button(
             label=t("btn_csv"),
             data=csv_data.encode("utf-8-sig"),
-            file_name="ordenes_shineandbright.csv",
+            file_name=f"ordenes_{download_slug}.csv",
             mime="text/csv",
             use_container_width=True,
         )
@@ -587,7 +695,7 @@ if st.session_state.df_editor is not None:
         st.download_button(
             label=t("btn_excel"),
             data=buffer,
-            file_name="ordenes_shineandbright.xlsx",
+            file_name=f"ordenes_{download_slug}.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             use_container_width=True,
         )
