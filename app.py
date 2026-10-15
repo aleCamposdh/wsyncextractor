@@ -7,6 +7,7 @@ from io import BytesIO, StringIO
 from datetime import date, timedelta
 import subprocess
 import sys
+import html
 
 import logger as _log
 _log.setup()
@@ -45,6 +46,18 @@ from mungo.transformer import transformar_ordenes_mungo
 from jobber import storage, oauth
 from jobber.client import JobberClient, JobberAuthError
 from jobber.mappers import parse_total, validate_row
+from tasks import (
+    ASSIGNEES,
+    ASSIGNEE_COLORS,
+    PRIORITIES,
+    build_pdf,
+    create_task,
+    delete_task,
+    init_db,
+    list_tasks,
+    report_tasks,
+    set_completed,
+)
 
 # ── CSS ───────────────────────────────────────────────────────────────────────
 APP_CSS = """
@@ -161,6 +174,36 @@ html, body, .stApp {
 [data-testid="stSidebar"] .stButton > button:hover {
   background-color: var(--ws-sidebar-hi) !important;
   border-color: rgba(0,194,255,0.3) !important;
+  color: #FFFFFF !important;
+}
+
+/* Sidebar primary navigation */
+[data-testid="stSidebar"] [class*="st-key-sidebar_nav_"] {
+  margin-bottom: 0.45rem;
+}
+[data-testid="stSidebar"] [class*="st-key-sidebar_nav_"] .stButton > button {
+  min-height: 3.35rem !important;
+  justify-content: flex-start !important;
+  padding: 0.75rem 1rem !important;
+  background: rgba(255,255,255,0.035) !important;
+  border: 1px solid rgba(255,255,255,0.06) !important;
+  border-radius: 0.9rem !important;
+  color: #DCE8F5 !important;
+  font-family: 'Sora', sans-serif !important;
+  font-size: 0.92rem !important;
+  font-weight: 600 !important;
+  text-align: left !important;
+}
+[data-testid="stSidebar"] [class*="st-key-sidebar_nav_"] .stButton > button:hover {
+  background: rgba(255,255,255,0.085) !important;
+  border-color: rgba(0,194,255,0.32) !important;
+  transform: translateX(2px);
+}
+[data-testid="stSidebar"] .st-key-sidebar_nav_orders_active .stButton > button,
+[data-testid="stSidebar"] .st-key-sidebar_nav_tasks_active .stButton > button {
+  background: linear-gradient(135deg, rgba(0,194,255,0.22), rgba(16,185,129,0.16)) !important;
+  border-color: rgba(0,194,255,0.5) !important;
+  box-shadow: inset 3px 0 0 var(--ws-accent), 0 5px 16px rgba(0,0,0,0.12) !important;
   color: #FFFFFF !important;
 }
 
@@ -382,6 +425,49 @@ hr { border: none !important; border-top: 1px solid var(--ws-border) !important;
 @media (max-width: 768px) {
   section[data-testid="stSidebar"] { min-width: 200px !important; }
 }
+
+/* === TASKS === */
+.task-summary {
+  border: 1px solid var(--ws-border); border-radius: var(--r-md);
+  background: var(--ws-white); padding: 1rem 1.1rem; box-shadow: var(--sh-xs);
+}
+.task-summary .label { color: var(--ws-muted); font-size: .72rem; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; }
+.task-summary .value { color: var(--ws-text); font-family: 'Sora',sans-serif; font-size: 1.55rem; font-weight: 700; margin-top: .25rem; }
+.task-table-wrap { overflow-x:auto; border:1px solid var(--ws-border); border-radius:var(--r-md); background:white; }
+.task-table { width:100%; border-collapse:collapse; font-size:.86rem; }
+.task-table th { background:#F1F5F9; color:#475569; font-size:.7rem; text-transform:uppercase; letter-spacing:.05em; text-align:left; padding:.78rem .9rem; }
+.task-table td { padding:.82rem .9rem; border-top:1px solid #E8EDF3; color:#1E293B; vertical-align:top; }
+.task-table tr.task-done td { color:#8793A3; background:#FAFBFC; }
+.task-title { font-weight:600; color:#111827; }
+.task-desc { color:#64748B; font-size:.76rem; margin-top:.2rem; max-width:430px; }
+.task-grid-header { color:#475569; font-size:.7rem; font-weight:700; text-transform:uppercase; letter-spacing:.05em; padding:.25rem .15rem; }
+.task-grid-cell { display:flex; flex-direction:column; justify-content:center; min-height:2.3rem; padding:0 .15rem; color:#1E293B; font-size:.84rem; }
+.task-grid-actions [data-testid="stButton"] button { padding:.28rem .45rem !important; min-height:2rem !important; font-size:.9rem !important; }
+[class*="st-key-task_row_"] {
+  border:1px solid var(--ws-border); border-radius:var(--r-sm);
+  background:var(--ws-white); padding:.38rem .65rem !important; margin-bottom:.28rem;
+}
+[class*="st-key-task_row_"] [data-testid="stVerticalBlock"] { gap:.18rem !important; }
+[class*="st-key-task_row_"] [data-testid="stHorizontalBlock"] { align-items:center !important; }
+[class*="st-key-task_row_"] [data-testid="stMarkdownContainer"] p { margin:0 !important; }
+[class*="st-key-task_row_"] [data-testid="stButton"] button {
+  min-height:1.9rem !important; height:1.9rem !important; padding:.18rem .35rem !important;
+}
+.person-pill,.priority-pill,.status-pill { display:inline-block; border-radius:999px; padding:.22rem .55rem; font-size:.72rem; font-weight:600; white-space:nowrap; }
+.task-title { line-height:1.15; }
+.task-desc { display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; line-height:1.2; margin-top:.16rem; }
+[class*="st-key-task_detail_"] [data-testid="stButton"] button {
+  border:0 !important; box-shadow:none !important; min-height:1.6rem !important; height:1.6rem !important;
+  padding:0 .2rem !important; color:#64748B !important; background:transparent !important;
+}
+.person-Danna { color:#A16207 !important; background:#FEF3C7 !important; }
+.priority-Alta { color:#B91C1C; background:#FEE2E2; }
+.priority-Media { color:#A16207; background:#FEF3C7; }
+.priority-Baja { color:#047857; background:#D1FAE5; }
+.status-done { color:#047857; background:#D1FAE5; }
+.status-open { color:#475569; background:#E2E8F0; }
+[data-testid="stTabs"] [data-baseweb="tab-list"] { gap:.35rem; border-bottom:1px solid var(--ws-border); }
+[data-testid="stTabs"] button[role="tab"] { font-family:'Rubik',sans-serif; font-weight:600; padding:.75rem 1.1rem; }
 </style>
 """
 
@@ -396,6 +482,7 @@ st.markdown(APP_CSS, unsafe_allow_html=True)
 # ── Session state defaults ────────────────────────────────────────────────────
 for key, default in [
     ("lang",          "es"),
+    ("main_section",  "Órdenes"),
     ("df_result",     None),
     ("df_editor",     None),   # DataFrame con columnas Subir + Ya subido
     ("df_source",     None),   # SupplyPro o Mungo Homes
@@ -424,6 +511,10 @@ if oauth.handle_callback():
 # ── Sidebar ───────────────────────────────────────────────────────────────────
 mungo_credentials_ready = bool(MUNGO_USERNAME and MUNGO_PASSWORD)
 
+
+def select_main_section(section: str) -> None:
+    st.session_state.main_section = section
+
 with st.sidebar:
     st.markdown("## ✨ ShineAndBright")
     st.markdown("---")
@@ -438,54 +529,350 @@ with st.sidebar:
     st.session_state.lang = "es" if lang_choice.startswith("🇪🇸") else "en"
 
     st.markdown("---")
-    st.caption(t("sidebar_jobber_status"))
+    st.caption("Navegación" if st.session_state.lang == "es" else "Navigation")
+    active_section = st.session_state.main_section
+    orders_container_key = (
+        "sidebar_nav_orders_active" if active_section == "Órdenes" else "sidebar_nav_orders"
+    )
+    tasks_container_key = (
+        "sidebar_nav_tasks_active" if active_section == "Tareas" else "sidebar_nav_tasks"
+    )
+    with st.container(key=orders_container_key):
+        st.button(
+            "📦   Órdenes" if st.session_state.lang == "es" else "📦   Orders",
+            key="sidebar_orders_button",
+            use_container_width=True,
+            on_click=select_main_section,
+            args=("Órdenes",),
+        )
+    with st.container(key=tasks_container_key):
+        st.button(
+            "✅   Tareas" if st.session_state.lang == "es" else "✅   Tasks",
+            key="sidebar_tasks_button",
+            use_container_width=True,
+            on_click=select_main_section,
+            args=("Tareas",),
+        )
+    main_section = st.session_state.main_section
 
-    tokens = storage.get_tokens()
-    if tokens:
-        account_name = tokens.get("account_name") or "Jobber"
-        st.success(t("jobber_connected", account=account_name))
+    if main_section == "Órdenes":
+        st.markdown("---")
+        st.caption(t("sidebar_jobber_status"))
 
-        col_test, col_disc = st.columns(2)
-        with col_test:
-            if st.button(t("btn_test_connection"), use_container_width=True):
-                try:
-                    client = JobberClient()
-                    account = client.fetch_account()
-                    st.toast(t("jobber_test_ok", account=account["name"]))
-                except JobberAuthError:
-                    st.warning(t("jobber_token_expired"))
-                except Exception as e:
-                    st.error(t("jobber_test_fail", err=e))
-        with col_disc:
-            if st.button(t("btn_disconnect_jobber"), use_container_width=True):
-                storage.clear_tokens()
-                st.rerun()
+        tokens = storage.get_tokens()
+        if tokens:
+            account_name = tokens.get("account_name") or "Jobber"
+            st.success(t("jobber_connected", account=account_name))
+
+            col_test, col_disc = st.columns(2)
+            with col_test:
+                if st.button(t("btn_test_connection"), use_container_width=True):
+                    try:
+                        client = JobberClient()
+                        account = client.fetch_account()
+                        st.toast(t("jobber_test_ok", account=account["name"]))
+                    except JobberAuthError:
+                        st.warning(t("jobber_token_expired"))
+                    except Exception as e:
+                        st.error(t("jobber_test_fail", err=e))
+            with col_disc:
+                if st.button(t("btn_disconnect_jobber"), use_container_width=True):
+                    storage.clear_tokens()
+                    st.rerun()
+        else:
+            st.info(t("jobber_not_connected"))
+            auth_url, _ = oauth.build_auth_url()
+            st.link_button(t("btn_connect_jobber"), auth_url, use_container_width=True)
+
+        st.markdown("---")
+        st.caption(t("sidebar_mungo_status"))
+        if mungo_credentials_ready:
+            st.success(t("mungo_credentials_ready"))
+            if st.button(t("btn_test_mungo"), use_container_width=True):
+                with st.spinner(t("mungo_testing_connection")):
+                    try:
+                        probar_conexion_mungo(MUNGO_USERNAME, MUNGO_PASSWORD)
+                        st.success(t("mungo_connection_ok"))
+                    except MungoAuthenticationError as error:
+                        st.error(str(error))
+                    except Exception as error:
+                        st.error(t("mungo_connection_error", err=error))
+        else:
+            st.warning(t("mungo_credentials_missing"))
+
+
+@st.dialog("Detalle de la tarea", width="small")
+def show_task_detail(task: dict):
+    """Show the complete task information without expanding the table row."""
+    due_date = date.fromisoformat(task["due_date"]).strftime("%d/%m/%Y")
+    status = "Completada" if task["completed"] else "Pendiente"
+    st.markdown(f"### {html.escape(task['title'])}")
+    detail_col1, detail_col2 = st.columns(2)
+    detail_col1.markdown(f"**Asignada a**  \n{html.escape(task['assignee'])}")
+    detail_col2.markdown(f"**Prioridad**  \n{html.escape(task['priority'])}")
+    detail_col1.markdown(f"**Fecha**  \n{due_date}")
+    detail_col2.markdown(f"**Estado**  \n{status}")
+    st.markdown("**Descripción**")
+    st.info(task["description"] or "Sin descripción")
+
+
+def render_tasks_module():
+    """UI del tablero compartido de tareas y sus reportes."""
+    init_db()
+    st.markdown("### Tablero de tareas")
+    st.caption("Crea, prioriza y da seguimiento al trabajo del equipo desde un solo lugar.")
+
+    with st.expander("＋ Crear nueva tarea", expanded=False):
+        with st.form("new_task_form", clear_on_submit=True):
+            title = st.text_input("Tarea *", placeholder="Ej. Confirmar orden con el cliente")
+            description = st.text_area(
+                "Descripción", placeholder="Agrega instrucciones o contexto útil…", height=90
+            )
+            form_col1, form_col2, form_col3 = st.columns(3)
+            with form_col1:
+                assignee = st.selectbox("Asignar a *", ASSIGNEES)
+            with form_col2:
+                priority = st.selectbox("Prioridad *", PRIORITIES, index=1)
+            with form_col3:
+                due_date = st.date_input("Fecha *", value=date.today())
+            submitted = st.form_submit_button(
+                "Crear tarea", type="primary", use_container_width=True
+            )
+            if submitted:
+                if not title.strip():
+                    st.error("Escribe el nombre de la tarea.")
+                else:
+                    create_task(title, description, assignee, priority, due_date)
+                    st.success("Tarea creada correctamente.")
+                    st.rerun()
+
+    st.markdown("#### Filtros")
+    filter_col1, filter_col2, filter_col3 = st.columns(3)
+    with filter_col1:
+        assignee_filter = st.multiselect(
+            "Persona asignada", ASSIGNEES, placeholder="Todas las personas"
+        )
+    with filter_col2:
+        priority_filter = st.multiselect(
+            "Prioridad", PRIORITIES, placeholder="Todas las prioridades"
+        )
+    with filter_col3:
+        status_filter = st.multiselect(
+            "Estado", ["Pendiente", "Completada"], placeholder="Todos los estados"
+        )
+
+    tasks = list_tasks(assignee_filter, priority_filter, status_filter)
+    all_tasks = list_tasks()
+    pending_count = sum(not task["completed"] for task in all_tasks)
+    completed_count = sum(bool(task["completed"]) for task in all_tasks)
+    high_count = sum(not task["completed"] and task["priority"] == "Alta" for task in all_tasks)
+    metric_cols = st.columns(4)
+    for column, label, value in zip(
+        metric_cols,
+        ("Total", "Pendientes", "Completadas", "Altas pendientes"),
+        (len(all_tasks), pending_count, completed_count, high_count),
+    ):
+        column.markdown(
+            f'<div class="task-summary"><div class="label">{label}</div>'
+            f'<div class="value">{value}</div></div>',
+            unsafe_allow_html=True,
+        )
+
+    st.markdown("#### Tareas")
+    st.caption("Las tareas se ordenan automáticamente: prioridad alta, media y baja.")
+    if not tasks:
+        st.info("No hay tareas que coincidan con los filtros seleccionados.")
     else:
-        st.info(t("jobber_not_connected"))
-        auth_url, _ = oauth.build_auth_url()
-        st.link_button(t("btn_connect_jobber"), auth_url, use_container_width=True)
+        page_size = 10
+        page_count = max(1, (len(tasks) + page_size - 1) // page_size)
+        current_page = min(max(st.session_state.get("task_page", 1), 1), page_count)
+        st.session_state.task_page = current_page
+        page_start = (current_page - 1) * page_size
+        visible_tasks = tasks[page_start:page_start + page_size]
+
+        table_widths = [3.2, 1.25, 1.05, 1.15, 1.15, 0.85]
+        header_columns = st.columns(table_widths)
+        for column, label in zip(
+            header_columns,
+            ("Tarea", "Asignada a", "Prioridad", "Fecha", "Estado", "Acciones"),
+        ):
+            column.markdown(f'<div class="task-grid-header">{label}</div>', unsafe_allow_html=True)
+
+        for task in visible_tasks:
+            person_color = ASSIGNEE_COLORS.get(task["assignee"], "#475569")
+            done = bool(task["completed"])
+            with st.container(key=f'task_row_{task["id"]}'):
+                row_columns = st.columns(table_widths, vertical_alignment="center")
+                with row_columns[0]:
+                    st.markdown(
+                        f'<div class="task-title">{html.escape(task["title"])}</div>',
+                        unsafe_allow_html=True,
+                    )
+                    description_col, detail_col = st.columns([9, 1], gap="small", vertical_alignment="center")
+                    description_col.markdown(
+                        f'<div class="task-desc">{html.escape(task["description"] or "Sin descripción")}</div>',
+                        unsafe_allow_html=True,
+                    )
+                    with detail_col:
+                        with st.container(key=f'task_detail_{task["id"]}'):
+                            if st.button(
+                                "ⓘ",
+                                key=f'task_detail_button_{task["id"]}',
+                                help="Ver información completa",
+                            ):
+                                show_task_detail(task)
+                row_columns[1].markdown(
+                    f'<span class="person-pill person-{html.escape(task["assignee"])}" '
+                    f'style="color:{person_color};background:{person_color}18">'
+                    f'{html.escape(task["assignee"])}</span>',
+                    unsafe_allow_html=True,
+                )
+                row_columns[2].markdown(
+                    f'<span class="priority-pill priority-{task["priority"]}">{task["priority"]}</span>',
+                    unsafe_allow_html=True,
+                )
+                row_columns[3].markdown(
+                    f'<div class="task-grid-cell">{date.fromisoformat(task["due_date"]).strftime("%d/%m/%Y")}</div>',
+                    unsafe_allow_html=True,
+                )
+                row_columns[4].markdown(
+                    f'<span class="status-pill {"status-done" if done else "status-open"}">'
+                    f'{"Completada" if done else "Pendiente"}</span>',
+                    unsafe_allow_html=True,
+                )
+                with row_columns[5]:
+                    st.markdown('<div class="task-grid-actions">', unsafe_allow_html=True)
+                    complete_col, delete_col = st.columns(2, gap="small")
+                    with complete_col:
+                        if st.button(
+                            "↩" if done else "✓",
+                            key=f'task_toggle_{task["id"]}',
+                            help="Reabrir tarea" if done else "Marcar como completada",
+                            use_container_width=True,
+                        ):
+                            set_completed(task["id"], not done)
+                            st.toast("Estado actualizado.")
+                            st.rerun()
+                    with delete_col:
+                        if st.button(
+                            "🗑",
+                            key=f'task_delete_{task["id"]}',
+                            help="Eliminar tarea",
+                            use_container_width=True,
+                        ):
+                            st.session_state.confirm_delete_task_id = task["id"]
+                            st.rerun()
+                    st.markdown("</div>", unsafe_allow_html=True)
+
+                if st.session_state.get("confirm_delete_task_id") == task["id"]:
+                    st.warning(f'¿Eliminar definitivamente “{task["title"]}”?')
+                    confirm_col, cancel_col, _ = st.columns([1, 1, 4])
+                    with confirm_col:
+                        if st.button("Sí, eliminar", key=f'confirm_delete_{task["id"]}', type="primary"):
+                            delete_task(task["id"])
+                            st.session_state.pop("confirm_delete_task_id", None)
+                            st.toast("Tarea eliminada.")
+                            st.rerun()
+                    with cancel_col:
+                        if st.button("Cancelar", key=f'cancel_delete_{task["id"]}'):
+                            st.session_state.pop("confirm_delete_task_id", None)
+                            st.rerun()
+
+        if page_count > 1:
+            previous_col, page_col, next_col = st.columns([1, 2, 1], vertical_alignment="center")
+            with previous_col:
+                if st.button(
+                    "← Anterior",
+                    disabled=current_page == 1,
+                    use_container_width=True,
+                    key="task_page_previous",
+                ):
+                    st.session_state.task_page = current_page - 1
+                    st.rerun()
+            with page_col:
+                st.markdown(
+                    f'<p style="text-align:center;margin:.45rem 0;color:#64748B;font-size:.82rem">'
+                    f'Página <strong>{current_page}</strong> de <strong>{page_count}</strong> · '
+                    f'{len(tasks)} tareas</p>',
+                    unsafe_allow_html=True,
+                )
+            with next_col:
+                if st.button(
+                    "Siguiente →",
+                    disabled=current_page == page_count,
+                    use_container_width=True,
+                    key="task_page_next",
+                ):
+                    st.session_state.task_page = current_page + 1
+                    st.rerun()
 
     st.markdown("---")
-    st.caption(t("sidebar_mungo_status"))
-    if mungo_credentials_ready:
-        st.success(t("mungo_credentials_ready"))
-        if st.button(t("btn_test_mungo"), use_container_width=True):
-            with st.spinner(t("mungo_testing_connection")):
-                try:
-                    probar_conexion_mungo(MUNGO_USERNAME, MUNGO_PASSWORD)
-                    st.success(t("mungo_connection_ok"))
-                except MungoAuthenticationError as error:
-                    st.error(str(error))
-                except Exception as error:
-                    st.error(t("mungo_connection_error", err=error))
+    st.markdown("### Reporte PDF")
+    st.caption("Selecciona un día, semana, mes o rango personalizado de hasta un año.")
+    report_col1, report_col2, report_col3 = st.columns(3)
+    with report_col1:
+        period = st.selectbox("Periodo", ["Día", "Semana", "Mes", "Personalizado"])
+    with report_col2:
+        report_status = st.selectbox("Estado de las tareas", ["Todas", "Completadas", "Pendientes"])
+
+    today = date.today()
+    if period == "Personalizado":
+        with report_col3:
+            custom_dates = st.date_input(
+                "Rango de fechas",
+                value=(today - timedelta(days=30), today),
+                max_value=today + timedelta(days=365),
+            )
+        if isinstance(custom_dates, (tuple, list)) and len(custom_dates) == 2:
+            report_start, report_end = custom_dates
+        else:
+            report_start = report_end = custom_dates[0] if isinstance(custom_dates, (tuple, list)) else custom_dates
     else:
-        st.warning(t("mungo_credentials_missing"))
+        with report_col3:
+            reference_date = st.date_input("Fecha de referencia", value=today, key="report_reference")
+        if period == "Día":
+            report_start = report_end = reference_date
+        elif period == "Semana":
+            report_start = reference_date - timedelta(days=reference_date.weekday())
+            report_end = report_start + timedelta(days=6)
+        else:
+            report_start = reference_date.replace(day=1)
+            next_month = (report_start.replace(day=28) + timedelta(days=4)).replace(day=1)
+            report_end = next_month - timedelta(days=1)
+
+    range_days = (report_end - report_start).days
+    if report_end < report_start:
+        st.error("La fecha final debe ser posterior a la fecha inicial.")
+    elif range_days > 366:
+        st.error("El reporte puede abarcar como máximo un año.")
+    else:
+        selected_report_tasks = report_tasks(report_start, report_end, report_status)
+        st.caption(
+            f"{len(selected_report_tasks)} tareas · "
+            f"{report_start.strftime('%d/%m/%Y')} al {report_end.strftime('%d/%m/%Y')}"
+        )
+        pdf_data = build_pdf(selected_report_tasks, report_start, report_end, report_status)
+        st.download_button(
+            "Descargar reporte PDF",
+            data=pdf_data,
+            file_name=f"reporte_tareas_{report_start.isoformat()}_{report_end.isoformat()}.pdf",
+            mime="application/pdf",
+            type="primary",
+            use_container_width=True,
+        )
 
 
 # ── Contenido principal ───────────────────────────────────────────────────────
 st.title(t("app_title"))
-st.markdown(f"### {t('app_subtitle')}")
+if main_section == "Tareas":
+    st.markdown("### Gestión compartida de tareas")
+else:
+    st.markdown(f"### {t('app_subtitle')}")
 st.markdown("---")
+
+if main_section == "Tareas":
+    render_tasks_module()
+    st.stop()
 
 # ── Extracción ────────────────────────────────────────────────────────────────
 source_choice = st.radio(
