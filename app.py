@@ -431,6 +431,7 @@ hr { border: none !important; border-top: 1px solid var(--ws-border) !important;
   border: 1px solid var(--ws-border); border-radius: var(--r-md);
   background: var(--ws-white); padding: 1rem 1.1rem; box-shadow: var(--sh-xs);
 }
+.task-summary-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:1rem; }
 .task-summary .label { color: var(--ws-muted); font-size: .72rem; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; }
 .task-summary .value { color: var(--ws-text); font-family: 'Sora',sans-serif; font-size: 1.55rem; font-weight: 700; margin-top: .25rem; }
 .task-table-wrap { overflow-x:auto; border:1px solid var(--ws-border); border-radius:var(--r-md); background:white; }
@@ -456,6 +457,29 @@ hr { border: none !important; border-top: 1px solid var(--ws-border) !important;
 .person-pill,.priority-pill,.status-pill { display:inline-block; border-radius:999px; padding:.22rem .55rem; font-size:.72rem; font-weight:600; white-space:nowrap; }
 .task-title { line-height:1.15; }
 .task-desc { display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; line-height:1.2; margin-top:.16rem; }
+[class*="st-key-task_open_"] [data-testid="stButton"] button {
+  width:100% !important; height:auto !important; min-height:2.6rem !important;
+  padding:.12rem .1rem !important; border:0 !important; box-shadow:none !important;
+  background:transparent !important; text-align:left !important; justify-content:flex-start !important;
+  white-space:normal !important;
+}
+[class*="st-key-task_open_"] [data-testid="stButton"] button p { text-align:left !important; line-height:1.2 !important; }
+[class*="st-key-task_open_"] [data-testid="stButton"] [data-testid="stMarkdownContainer"] {
+  width:100% !important; text-align:left !important;
+}
+.task-badges { display:flex; flex-wrap:wrap; align-items:center; gap:.3rem; }
+.task-detail-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:1rem 1.25rem; margin:.75rem 0 1rem; }
+.task-detail-item { min-width:0; }
+.task-detail-label { color:#64748B; font-size:.72rem; font-weight:600; text-transform:uppercase; letter-spacing:.035em; margin-bottom:.2rem; }
+.task-detail-value { color:#111827; font-size:.92rem; font-weight:500; overflow-wrap:anywhere; }
+.task-mobile-header { display:none; }
+[class*="st-key-task_desktop_row_"], [class*="st-key-task_mobile_row_"] {
+  border:1px solid var(--ws-border); border-radius:var(--r-sm);
+  background:var(--ws-white); padding:.38rem .65rem !important; margin-bottom:.28rem;
+}
+[class*="st-key-task_mobile_row_"] { display:none; }
+[class*="st-key-task_desktop_row_"] [data-testid="stVerticalBlock"],
+[class*="st-key-task_mobile_row_"] [data-testid="stVerticalBlock"] { gap:.2rem !important; }
 [class*="st-key-task_detail_"] [data-testid="stButton"] button {
   border:0 !important; box-shadow:none !important; min-height:1.6rem !important; height:1.6rem !important;
   padding:0 .2rem !important; color:#64748B !important; background:transparent !important;
@@ -468,6 +492,58 @@ hr { border: none !important; border-top: 1px solid var(--ws-border) !important;
 .status-open { color:#475569; background:#E2E8F0; }
 [data-testid="stTabs"] [data-baseweb="tab-list"] { gap:.35rem; border-bottom:1px solid var(--ws-border); }
 [data-testid="stTabs"] button[role="tab"] { font-family:'Rubik',sans-serif; font-weight:600; padding:.75rem 1.1rem; }
+
+@media (max-width:640px) {
+  html, body, .stApp, [data-testid="stMain"] { max-width:100vw !important; overflow-x:hidden !important; }
+  [data-testid="stMainBlockContainer"] { width:100% !important; max-width:100% !important; padding:.8rem .7rem 2rem !important; }
+  .task-summary-grid { width:100%; grid-template-columns:repeat(2,minmax(0,1fr)); gap:.45rem; }
+  .task-summary { padding:.6rem .7rem; min-height:4rem; }
+  .task-summary .label { font-size:.61rem; letter-spacing:.025em; }
+  .task-summary .value { font-size:1.2rem; margin-top:.08rem; }
+  [class*="st-key-task_table_header"] { display:none !important; }
+  .task-mobile-header {
+    display:grid; grid-template-columns:minmax(0,1fr) 104px 58px;
+    gap:.5rem; padding:0 .65rem .38rem; color:#475569; font-size:.58rem;
+    font-weight:700; text-transform:uppercase; letter-spacing:.025em;
+  }
+  .task-mobile-header span:nth-child(2), .task-mobile-header span:nth-child(3) { text-align:center; }
+  .task-mobile-header span { white-space:nowrap; }
+  [class*="st-key-task_desktop_row_"] { display:none !important; }
+  [class*="st-key-task_mobile_row_"] {
+    display:block !important; width:100% !important; max-width:100% !important;
+    box-sizing:border-box; min-height:6.6rem; padding:.6rem .65rem !important;
+    margin-bottom:.45rem; overflow:visible !important;
+  }
+  [class*="st-key-task_mobile_row_"] [data-testid="stHorizontalBlock"] {
+    display:grid !important;
+    grid-template-columns:minmax(0,1fr) 104px 58px !important;
+    gap:.5rem !important; align-items:center !important; width:100% !important;
+  }
+  [class*="st-key-task_mobile_row_"] [data-testid="column"] {
+    width:100% !important; min-width:0 !important; max-width:100% !important; flex:none !important;
+  }
+  [class*="st-key-task_mobile_row_"] .task-badges {
+    min-height:4.9rem; flex-direction:column; justify-content:center;
+    align-items:center; gap:.25rem;
+  }
+  [class*="st-key-task_open_mobile_"] [data-testid="stButton"],
+  [class*="st-key-task_open_mobile_"] [data-testid="stButton"] > div { width:100% !important; }
+  [class*="st-key-task_open_mobile_"] [data-testid="stButton"] button {
+    display:block !important; width:100% !important; min-height:4.9rem !important;
+    text-align:left !important;
+    justify-content:flex-start !important; align-items:flex-start !important;
+  }
+  [class*="st-key-task_open_mobile_"] [data-testid="stButton"] button *,
+  [class*="st-key-task_open_mobile_"] [data-testid="stMarkdownContainer"] {
+    width:100% !important; text-align:left !important; justify-content:flex-start !important;
+  }
+  [class*="st-key-task_mobile_row_"] [class*="st-key-task_open_"] [data-testid="stButton"] button { min-height:3.2rem !important; }
+  [class*="st-key-task_mobile_actions_"] [data-testid="stVerticalBlock"] { gap:.3rem !important; }
+  [class*="st-key-task_mobile_actions_"] [data-testid="stButton"] button {
+    width:2.35rem !important; min-height:2.2rem !important; height:2.2rem !important;
+    padding:.15rem !important; margin:0 auto !important;
+  }
+}
 </style>
 """
 
@@ -607,11 +683,15 @@ def show_task_detail(task: dict):
     due_date = date.fromisoformat(task["due_date"]).strftime("%d/%m/%Y")
     status = "Completada" if task["completed"] else "Pendiente"
     st.markdown(f"### {html.escape(task['title'])}")
-    detail_col1, detail_col2 = st.columns(2)
-    detail_col1.markdown(f"**Asignada a**  \n{html.escape(task['assignee'])}")
-    detail_col2.markdown(f"**Prioridad**  \n{html.escape(task['priority'])}")
-    detail_col1.markdown(f"**Fecha**  \n{due_date}")
-    detail_col2.markdown(f"**Estado**  \n{status}")
+    st.markdown(
+        '<div class="task-detail-grid">'
+        f'<div class="task-detail-item"><div class="task-detail-label">Asignada a</div><div class="task-detail-value">{html.escape(task["assignee"])}</div></div>'
+        f'<div class="task-detail-item"><div class="task-detail-label">Fecha</div><div class="task-detail-value">{due_date}</div></div>'
+        f'<div class="task-detail-item"><div class="task-detail-label">Prioridad</div><div class="task-detail-value">{html.escape(task["priority"])}</div></div>'
+        f'<div class="task-detail-item"><div class="task-detail-label">Estado</div><div class="task-detail-value">{status}</div></div>'
+        '</div>',
+        unsafe_allow_html=True,
+    )
     st.markdown("**Descripción**")
     st.info(task["description"] or "Sin descripción")
 
@@ -646,37 +726,39 @@ def render_tasks_module():
                     st.success("Tarea creada correctamente.")
                     st.rerun()
 
-    st.markdown("#### Filtros")
-    filter_col1, filter_col2, filter_col3 = st.columns(3)
-    with filter_col1:
-        assignee_filter = st.multiselect(
-            "Persona asignada", ASSIGNEES, placeholder="Todas las personas"
-        )
-    with filter_col2:
-        priority_filter = st.multiselect(
-            "Prioridad", PRIORITIES, placeholder="Todas las prioridades"
-        )
-    with filter_col3:
-        status_filter = st.multiselect(
-            "Estado", ["Pendiente", "Completada"], placeholder="Todos los estados"
-        )
+    with st.expander("Filtros", expanded=False):
+        filter_col1, filter_col2, filter_col3 = st.columns(3)
+        with filter_col1:
+            assignee_filter = st.multiselect(
+                "Persona asignada", ASSIGNEES, placeholder="Todas las personas"
+            )
+        with filter_col2:
+            priority_filter = st.multiselect(
+                "Prioridad", PRIORITIES, placeholder="Todas las prioridades"
+            )
+        with filter_col3:
+            status_filter = st.multiselect(
+                "Estado", ["Pendiente", "Completada"], placeholder="Todos los estados"
+            )
 
     tasks = list_tasks(assignee_filter, priority_filter, status_filter)
     all_tasks = list_tasks()
     pending_count = sum(not task["completed"] for task in all_tasks)
     completed_count = sum(bool(task["completed"]) for task in all_tasks)
     high_count = sum(not task["completed"] and task["priority"] == "Alta" for task in all_tasks)
-    metric_cols = st.columns(4)
-    for column, label, value in zip(
-        metric_cols,
+    summary_cards = []
+    for label, value in zip(
         ("Total", "Pendientes", "Completadas", "Altas pendientes"),
         (len(all_tasks), pending_count, completed_count, high_count),
     ):
-        column.markdown(
+        summary_cards.append(
             f'<div class="task-summary"><div class="label">{label}</div>'
-            f'<div class="value">{value}</div></div>',
-            unsafe_allow_html=True,
+            f'<div class="value">{value}</div></div>'
         )
+    st.markdown(
+        f'<div class="task-summary-grid">{"".join(summary_cards)}</div>',
+        unsafe_allow_html=True,
+    )
 
     st.markdown("#### Tareas")
     st.caption("Las tareas se ordenan automáticamente: prioridad alta, media y baja.")
@@ -690,93 +772,138 @@ def render_tasks_module():
         page_start = (current_page - 1) * page_size
         visible_tasks = tasks[page_start:page_start + page_size]
 
-        table_widths = [3.2, 1.25, 1.05, 1.15, 1.15, 0.85]
-        header_columns = st.columns(table_widths)
-        for column, label in zip(
-            header_columns,
-            ("Tarea", "Asignada a", "Prioridad", "Fecha", "Estado", "Acciones"),
-        ):
-            column.markdown(f'<div class="task-grid-header">{label}</div>', unsafe_allow_html=True)
+        table_widths = [3.5, 2.1, 1.2, 0.75]
+        with st.container(key="task_table_header"):
+            header_columns = st.columns(table_widths)
+            for column, label in zip(
+                header_columns,
+                ("Tarea", "Información", "Fecha", "Acciones"),
+            ):
+                column.markdown(f'<div class="task-grid-header">{label}</div>', unsafe_allow_html=True)
+        st.markdown(
+            '<div class="task-mobile-header"><span>Tarea</span>'
+            '<span>Información</span><span>Acciones</span></div>',
+            unsafe_allow_html=True,
+        )
 
         for task in visible_tasks:
             person_color = ASSIGNEE_COLORS.get(task["assignee"], "#475569")
             done = bool(task["completed"])
-            with st.container(key=f'task_row_{task["id"]}'):
+            full_description = task["description"] or "Sin descripción"
+            short_description = (
+                full_description if len(full_description) <= 62
+                else f"{full_description[:59].rstrip()}…"
+            )
+            with st.container(key=f'task_desktop_row_{task["id"]}'):
                 row_columns = st.columns(table_widths, vertical_alignment="center")
                 with row_columns[0]:
                     st.markdown(
                         f'<div class="task-title">{html.escape(task["title"])}</div>',
                         unsafe_allow_html=True,
                     )
-                    description_col, detail_col = st.columns([9, 1], gap="small", vertical_alignment="center")
+                    description_col, detail_col = st.columns(
+                        [9, 1], gap="small", vertical_alignment="center"
+                    )
                     description_col.markdown(
-                        f'<div class="task-desc">{html.escape(task["description"] or "Sin descripción")}</div>',
+                        f'<div class="task-desc">{html.escape(short_description)}</div>',
                         unsafe_allow_html=True,
                     )
                     with detail_col:
-                        with st.container(key=f'task_detail_{task["id"]}'):
+                        with st.container(key=f'task_detail_desktop_{task["id"]}'):
                             if st.button(
                                 "ⓘ",
-                                key=f'task_detail_button_{task["id"]}',
+                                key=f'task_desktop_detail_button_{task["id"]}',
                                 help="Ver información completa",
                             ):
                                 show_task_detail(task)
                 row_columns[1].markdown(
-                    f'<span class="person-pill person-{html.escape(task["assignee"])}" '
+                    f'<div class="task-badges"><span class="person-pill person-{html.escape(task["assignee"])}" '
                     f'style="color:{person_color};background:{person_color}18">'
-                    f'{html.escape(task["assignee"])}</span>',
+                    f'{html.escape(task["assignee"])}</span>'
+                    f'<span class="priority-pill priority-{task["priority"]}">{task["priority"]}</span>'
+                    f'<span class="status-pill {"status-done" if done else "status-open"}">'
+                    f'{"Completada" if done else "Pendiente"}</span></div>',
                     unsafe_allow_html=True,
                 )
                 row_columns[2].markdown(
-                    f'<span class="priority-pill priority-{task["priority"]}">{task["priority"]}</span>',
-                    unsafe_allow_html=True,
-                )
-                row_columns[3].markdown(
                     f'<div class="task-grid-cell">{date.fromisoformat(task["due_date"]).strftime("%d/%m/%Y")}</div>',
                     unsafe_allow_html=True,
                 )
-                row_columns[4].markdown(
-                    f'<span class="status-pill {"status-done" if done else "status-open"}">'
-                    f'{"Completada" if done else "Pendiente"}</span>',
-                    unsafe_allow_html=True,
-                )
-                with row_columns[5]:
-                    st.markdown('<div class="task-grid-actions">', unsafe_allow_html=True)
-                    complete_col, delete_col = st.columns(2, gap="small")
-                    with complete_col:
+                with row_columns[3]:
+                    with st.container(key=f'task_desktop_actions_{task["id"]}'):
                         if st.button(
                             "↩" if done else "✓",
-                            key=f'task_toggle_{task["id"]}',
+                            key=f'task_desktop_toggle_{task["id"]}',
                             help="Reabrir tarea" if done else "Marcar como completada",
                             use_container_width=True,
                         ):
                             set_completed(task["id"], not done)
                             st.toast("Estado actualizado.")
                             st.rerun()
-                    with delete_col:
                         if st.button(
                             "🗑",
-                            key=f'task_delete_{task["id"]}',
+                            key=f'task_desktop_delete_{task["id"]}',
                             help="Eliminar tarea",
                             use_container_width=True,
                         ):
                             st.session_state.confirm_delete_task_id = task["id"]
                             st.rerun()
-                    st.markdown("</div>", unsafe_allow_html=True)
 
-                if st.session_state.get("confirm_delete_task_id") == task["id"]:
-                    st.warning(f'¿Eliminar definitivamente “{task["title"]}”?')
-                    confirm_col, cancel_col, _ = st.columns([1, 1, 4])
-                    with confirm_col:
-                        if st.button("Sí, eliminar", key=f'confirm_delete_{task["id"]}', type="primary"):
-                            delete_task(task["id"])
-                            st.session_state.pop("confirm_delete_task_id", None)
-                            st.toast("Tarea eliminada.")
+            with st.container(key=f'task_mobile_row_{task["id"]}'):
+                mobile_task_col, mobile_badges_col, mobile_actions_col = st.columns(
+                    [1.7, .8, .42], vertical_alignment="center"
+                )
+                with mobile_task_col:
+                    with st.container(key=f'task_open_mobile_{task["id"]}'):
+                        if st.button(
+                            f'**{task["title"]}**  \n{short_description}',
+                            key=f'task_mobile_open_button_{task["id"]}',
+                            help="Ver información completa",
+                            use_container_width=True,
+                        ):
+                            show_task_detail(task)
+                mobile_badges_col.markdown(
+                    f'<div class="task-badges"><span class="person-pill person-{html.escape(task["assignee"])}" '
+                    f'style="color:{person_color};background:{person_color}18">'
+                    f'{html.escape(task["assignee"])}</span>'
+                    f'<span class="priority-pill priority-{task["priority"]}">{task["priority"]}</span>'
+                    f'<span class="status-pill {"status-done" if done else "status-open"}">'
+                    f'{"Completada" if done else "Pendiente"}</span></div>',
+                    unsafe_allow_html=True,
+                )
+                with mobile_actions_col:
+                    with st.container(key=f'task_mobile_actions_{task["id"]}'):
+                        if st.button(
+                            "↩" if done else "✓",
+                            key=f'task_mobile_toggle_{task["id"]}',
+                            help="Reabrir tarea" if done else "Marcar como completada",
+                            use_container_width=True,
+                        ):
+                            set_completed(task["id"], not done)
+                            st.toast("Estado actualizado.")
                             st.rerun()
-                    with cancel_col:
-                        if st.button("Cancelar", key=f'cancel_delete_{task["id"]}'):
-                            st.session_state.pop("confirm_delete_task_id", None)
+                        if st.button(
+                            "🗑",
+                            key=f'task_mobile_delete_{task["id"]}',
+                            help="Eliminar tarea",
+                            use_container_width=True,
+                        ):
+                            st.session_state.confirm_delete_task_id = task["id"]
                             st.rerun()
+
+            if st.session_state.get("confirm_delete_task_id") == task["id"]:
+                st.warning(f'¿Eliminar definitivamente “{task["title"]}”?')
+                confirm_col, cancel_col, _ = st.columns([1, 1, 4])
+                with confirm_col:
+                    if st.button("Sí, eliminar", key=f'confirm_delete_{task["id"]}', type="primary"):
+                        delete_task(task["id"])
+                        st.session_state.pop("confirm_delete_task_id", None)
+                        st.toast("Tarea eliminada.")
+                        st.rerun()
+                with cancel_col:
+                    if st.button("Cancelar", key=f'cancel_delete_{task["id"]}'):
+                        st.session_state.pop("confirm_delete_task_id", None)
+                        st.rerun()
 
         if page_count > 1:
             previous_col, page_col, next_col = st.columns([1, 2, 1], vertical_alignment="center")
