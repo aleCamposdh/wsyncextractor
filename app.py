@@ -58,7 +58,6 @@ from tasks import (
     report_tasks,
     set_priority,
     set_completed,
-    task_assignees,
 )
 from reminders import (
     acknowledge_reminders,
@@ -68,6 +67,16 @@ from reminders import (
     list_reminders,
     pending_reminders_for,
 )
+
+
+def task_assignees(task: dict) -> list[str]:
+    """Obtiene todas las personas manteniendo compatibilidad con tareas antiguas."""
+    stored = task.get("assigned_to") or ""
+    chosen = [name.strip() for name in stored.split(",") if name.strip() in ASSIGNEES]
+    primary = task.get("assignee")
+    if primary in ASSIGNEES and primary not in chosen:
+        chosen.insert(0, primary)
+    return chosen or ([primary] if primary else [])
 
 # ── CSS ───────────────────────────────────────────────────────────────────────
 APP_CSS = """
