@@ -3,6 +3,7 @@ from datetime import date
 from unittest.mock import patch
 
 import tasks
+import reminders
 
 
 class TaskModuleTests(unittest.TestCase):
@@ -90,6 +91,10 @@ class FakeQuery:
         self.filters.append(("eq", field, value))
         return self
 
+    def neq(self, field, value):
+        self.filters.append(("neq", field, value))
+        return self
+
     def in_(self, field, values):
         self.filters.append(("in", field, values))
         return self
@@ -105,6 +110,8 @@ class FakeQuery:
     def _matches(self, row):
         for operation, field, value in self.filters:
             if operation == "eq" and row[field] != value:
+                return False
+            if operation == "neq" and row[field] == value:
                 return False
             if operation == "in" and row[field] not in value:
                 return False
@@ -143,6 +150,38 @@ class FakeSupabase:
 
     def table(self, _name):
         return FakeQuery(self.rows)
+
+
+class ReminderModuleTests(unittest.TestCase):
+    def setUp(self):
+        self.rows = []
+        self.client = FakeSupabase(self.rows)
+        self.tasks_patch = patch("tasks.get_supabase", return_value=self.client)
+        self.reminders_patch = patch("reminders.get_supabase", return_value=self.client)
+        self.tasks_patch.start()
+        self.reminders_patch.start()
+        reminders._fallback_to_tasks = True
+
+    def tearDown(self):
+        self.tasks_patch.stop()
+        self.reminders_patch.stop()
+        reminders._fallback_to_tasks = False
+
+    def test_reminder_alert_is_acknowledged_and_hidden_from_tasks(self):
+        day = date(2026, 10, 16)
+        reminders.create_reminder("Llamar al cliente", day)
+
+        self.assertEqual(tasks.list_tasks(), [])
+        alerts = reminders.pending_reminders_for(day)
+        self.assertEqual(len(alerts), 1)
+        self.assertEqual(alerts[0]["description"], "Llamar al cliente")
+
+        reminders.acknowledge_reminders([alerts[0]["id"]])
+        self.assertEqual(reminders.pending_reminders_for(day), [])
+        self.assertEqual(len(reminders.list_reminders()), 1)
+
+        reminders.delete_reminder(alerts[0]["id"])
+        self.assertEqual(reminders.list_reminders(), [])
 
 
 if __name__ == "__main__":

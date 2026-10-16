@@ -35,6 +35,7 @@ ASSIGNEE_COLORS = {
 }
 PRIORITIES = ("Alta", "Media", "Baja")
 PRIORITY_RANK = {"Alta": 1, "Media": 2, "Baja": 3}
+REMINDER_SENTINEL = "__WORKSYNC_REMINDER__"
 
 
 def init_db() -> None:
@@ -56,7 +57,7 @@ def create_task(title: str, description: str, assignee: str, priority: str, due_
 
 def list_tasks(assignees: Iterable[str] | None = None, priorities: Iterable[str] | None = None,
                statuses: Iterable[str] | None = None) -> list[dict]:
-    query = get_supabase().table(TASKS_TABLE).select("*")
+    query = get_supabase().table(TASKS_TABLE).select("*").neq("title", REMINDER_SENTINEL)
     for field, values in (("assignee", assignees), ("priority", priorities)):
         chosen = list(values or [])
         if chosen:
@@ -104,6 +105,7 @@ def report_tasks(start: date, end: date, status: str,
         get_supabase()
         .table(TASKS_TABLE)
         .select("*")
+        .neq("title", REMINDER_SENTINEL)
         .gte("due_date", start.isoformat())
         .lte("due_date", end.isoformat())
     )

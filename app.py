@@ -59,6 +59,14 @@ from tasks import (
     set_priority,
     set_completed,
 )
+from reminders import (
+    acknowledge_reminders,
+    create_reminder,
+    delete_reminder,
+    init_reminders_db,
+    list_reminders,
+    pending_reminders_for,
+)
 
 # ── CSS ───────────────────────────────────────────────────────────────────────
 APP_CSS = """
@@ -509,6 +517,43 @@ hr { border: none !important; border-top: 1px solid var(--ws-border) !important;
 .priority-Baja { color:#047857; background:#D1FAE5; }
 .status-done { color:#047857; background:#D1FAE5; }
 .status-open { color:#475569; background:#E2E8F0; }
+.reminder-toolbar { display:flex; align-items:center; justify-content:space-between; gap:1rem; }
+[class*="st-key-reminder_row_"] {
+  border:1px solid var(--ws-border); border-radius:var(--r-sm); background:var(--ws-white);
+  padding:.65rem .8rem; margin-bottom:.45rem;
+}
+.reminder-date { color:#475569; font-size:.78rem; font-weight:600; white-space:nowrap; }
+.reminder-date-today { color:#B91C1C; }
+[class*="st-key-reminder_bell_"] [data-testid="stButton"] button {
+  width:max-content !important; min-width:3.1rem !important; margin-left:auto !important;
+  border-radius:999px !important; font-size:1.25rem !important; position:relative !important;
+  overflow:visible !important;
+}
+[class*="st-key-reminder_bell_alert_"] [data-testid="stButton"] button {
+  color:#B91C1C !important; background:#FFF7F7 !important; border-color:#FCA5A5 !important;
+  box-shadow:0 0 0 3px rgba(239,68,68,.08) !important;
+}
+[class*="st-key-reminder_bell_alert_"] [data-testid="stButton"] button::after {
+  content:""; position:absolute; top:-.55rem; right:-.45rem;
+  display:flex; align-items:center; justify-content:center; min-width:1.35rem; height:1.35rem;
+  padding:0 .2rem; box-sizing:border-box; border-radius:999px; background:#EF2B2D; color:white;
+  border:2px solid white; font-size:.68rem; font-weight:700; line-height:1;
+}
+[class*="st-key-reminder_delete_"] [data-testid="stButton"] button {
+  min-height:2.1rem !important; height:2.1rem !important; padding:.2rem .55rem !important;
+}
+[class*="st-key-reminder_open_"] [data-testid="stButton"] button {
+  width:100% !important; justify-content:flex-start !important; text-align:left !important;
+  border:0 !important; background:transparent !important; box-shadow:none !important;
+  padding:.2rem 0 !important; min-height:2rem !important; height:auto !important;
+}
+[class*="st-key-reminder_open_"] [data-testid="stButton"] button p {
+  width:100%; text-align:left; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+[class*="st-key-reminder_row_highlight_"] {
+  border-color:#38BDF8 !important; background:#F0F9FF !important;
+  box-shadow:0 0 0 2px rgba(56,189,248,.1) !important;
+}
 [class*="st-key-task_badge_"] [data-testid="stButton"] button {
   border:0 !important; border-radius:999px !important; min-height:1.75rem !important;
   height:1.75rem !important; padding:.15rem .55rem !important; box-shadow:none !important;
@@ -600,6 +645,13 @@ hr { border: none !important; border-top: 1px solid var(--ws-border) !important;
     width:2.35rem !important; min-height:2.2rem !important; height:2.2rem !important;
     padding:.15rem !important; margin:0 auto !important;
   }
+  [class*="st-key-reminder_row_"] [data-testid="stHorizontalBlock"] {
+    display:grid !important; grid-template-columns:minmax(0,1fr) 76px 46px !important;
+    gap:.4rem !important; align-items:center !important;
+  }
+  [class*="st-key-reminder_row_"] [data-testid="column"] {
+    width:100% !important; min-width:0 !important; flex:none !important;
+  }
 }
 </style>
 """
@@ -616,6 +668,8 @@ st.markdown(APP_CSS, unsafe_allow_html=True)
 for key, default in [
     ("lang",          "es"),
     ("main_section",  "Órdenes"),
+    ("task_workspace_board", "Tablero de tareas"),
+    ("reminder_list_filter", "Hoy"),
     ("df_result",     None),
     ("df_editor",     None),   # DataFrame con columnas Subir + Ya subido
     ("df_source",     None),   # SupplyPro o Mungo Homes
@@ -680,7 +734,7 @@ with st.sidebar:
         )
     with st.container(key=tasks_container_key):
         st.button(
-            "✅   Tareas" if st.session_state.lang == "es" else "✅   Tasks",
+            "✅   Tareas y Recordatorios" if st.session_state.lang == "es" else "✅   Tasks and Reminders",
             key="sidebar_tasks_button",
             use_container_width=True,
             on_click=select_main_section,
@@ -753,9 +807,174 @@ def show_task_detail(task: dict):
     st.info(task["description"] or "Sin descripción")
 
 
+@st.dialog("Recordatorio", width="small")
+def show_reminder_detail(reminder: dict):
+    reminder_day = date.fromisoformat(reminder["reminder_date"])
+    st.caption(reminder_day.strftime("%d/%m/%Y"))
+    st.markdown(
+        f'<div style="white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.55">'
+        f'{html.escape(reminder["description"])}</div>',
+        unsafe_allow_html=True,
+    )
+
+
+@st.dialog("🔔 Recordatorios de hoy", width="small")
+def show_today_reminder_alerts(alert_reminders: list[dict]):
+    st.caption("Selecciona un recordatorio para abrirlo y marcar su alerta como vista.")
+    for reminder in alert_reminders:
+        description = reminder["description"]
+        short_description = (
+            description if len(description) <= 72 else f"{description[:69].rstrip()}…"
+        )
+        if st.button(
+            short_description,
+            key=f'open_alert_reminder_{reminder["id"]}',
+            use_container_width=True,
+        ):
+            acknowledge_reminders([reminder["id"]])
+            st.session_state.task_workspace_board = "Tablero de recordatorios"
+            st.session_state.reminder_list_filter = "Hoy"
+            st.session_state.highlight_reminder_id = reminder["id"]
+            st.rerun()
+
+
+def render_reminders_board():
+    """Formulario y listado del tablero compartido de recordatorios."""
+    st.markdown("### Tablero de recordatorios")
+    st.caption("Programa avisos por fecha para que el equipo no olvide ningún pendiente.")
+
+    with st.expander("＋ Crear recordatorio", expanded=False):
+        with st.form("new_reminder_form", clear_on_submit=True):
+            description = st.text_area(
+                "Descripción *", placeholder="Ej. Llamar al cliente para confirmar la visita",
+                height=90,
+            )
+            reminder_date = st.date_input("Fecha *", value=date.today(), key="new_reminder_date")
+            submitted = st.form_submit_button(
+                "Crear recordatorio", type="primary", use_container_width=True
+            )
+            if submitted:
+                if not description.strip():
+                    st.error("Escribe la descripción del recordatorio.")
+                else:
+                    create_reminder(description, reminder_date)
+                    st.success("Recordatorio creado correctamente.")
+                    st.rerun()
+
+    reminders = list_reminders()
+    st.markdown("#### Recordatorios")
+    reminder_filter = st.segmented_control(
+        "Filtro de recordatorios",
+        options=["Hoy", "Todos"],
+        key="reminder_list_filter",
+        label_visibility="collapsed",
+    )
+    today = date.today()
+    if reminder_filter == "Hoy":
+        reminders = [
+            reminder for reminder in reminders
+            if date.fromisoformat(reminder["reminder_date"]) == today
+        ]
+    if not reminders:
+        empty_message = (
+            "No hay recordatorios para hoy."
+            if reminder_filter == "Hoy" else "No hay recordatorios creados."
+        )
+        st.info(empty_message)
+        return
+
+    for reminder in reminders:
+        reminder_day = date.fromisoformat(reminder["reminder_date"])
+        if reminder_day == today:
+            date_label, date_class = "Hoy", "reminder-date-today"
+        elif reminder_day < today:
+            date_label, date_class = "Vencido", "reminder-date-today"
+        else:
+            date_label, date_class = reminder_day.strftime("%d/%m/%Y"), ""
+        is_highlighted = st.session_state.get("highlight_reminder_id") == reminder["id"]
+        row_kind = "highlight" if is_highlighted else "normal"
+        with st.container(key=f'reminder_row_{row_kind}_{reminder["id"]}'):
+            description_col, date_col, action_col = st.columns(
+                [5, 1.15, .55], vertical_alignment="center"
+            )
+            description = reminder["description"]
+            short_description = (
+                description if len(description) <= 90 else f"{description[:87].rstrip()}…"
+            )
+            with description_col:
+                with st.container(key=f'reminder_open_{reminder["id"]}'):
+                    if st.button(
+                        short_description, key=f'reminder_open_button_{reminder["id"]}',
+                        help="Ver recordatorio completo", use_container_width=True,
+                    ):
+                        show_reminder_detail(reminder)
+            date_col.markdown(
+                f'<div class="reminder-date {date_class}">{date_label}</div>',
+                unsafe_allow_html=True,
+            )
+            with action_col:
+                with st.container(key=f'reminder_delete_{reminder["id"]}'):
+                    if st.button(
+                        "🗑", key=f'delete_reminder_{reminder["id"]}',
+                        help="Eliminar recordatorio", use_container_width=True,
+                    ):
+                        delete_reminder(reminder["id"])
+                        st.toast("Recordatorio eliminado.")
+                        st.rerun()
+
+
 def render_tasks_module():
     """UI del tablero compartido de tareas y sus reportes."""
     init_db()
+    reminders_ready = True
+    try:
+        init_reminders_db()
+        alert_reminders = pending_reminders_for(date.today())
+    except Exception:
+        reminders_ready = False
+        alert_reminders = []
+
+    heading_col, bell_col = st.columns([8, 1], vertical_alignment="center")
+    with heading_col:
+        st.markdown("### Gestión de tareas y recordatorios")
+        st.caption("Organiza el trabajo del equipo y consulta los avisos del día.")
+    with bell_col:
+        alert_count = len(alert_reminders)
+        bell_container_key = (
+            f"reminder_bell_alert_count_{alert_count}" if alert_count
+            else "reminder_bell_empty"
+        )
+        if alert_count:
+            st.markdown(
+                f'<style>[class*="st-key-{bell_container_key}"] '
+                f'[data-testid="stButton"] button::after{{content:"{alert_count}";}}</style>',
+                unsafe_allow_html=True,
+            )
+        with st.container(key=bell_container_key):
+            if st.button(
+                "🔔", key="reminder_bell_button", help="Ver recordatorios de hoy",
+                disabled=not alert_reminders, use_container_width=True,
+            ):
+                show_today_reminder_alerts(alert_reminders)
+
+    board = st.segmented_control(
+        "Tablero",
+        options=["Tablero de tareas", "Tablero de recordatorios"],
+        key="task_workspace_board",
+        label_visibility="collapsed",
+    )
+    st.markdown("---")
+
+    if board == "Tablero de recordatorios":
+        if not reminders_ready:
+            st.error(
+                "La tabla de recordatorios aún no está disponible. Ejecuta "
+                "`supabase/worksync_reminders.sql` en el SQL Editor de Supabase."
+            )
+            return
+        render_reminders_board()
+        return
+
     st.markdown("### Tablero de tareas")
     st.caption("Crea, prioriza y da seguimiento al trabajo del equipo desde un solo lugar.")
 
