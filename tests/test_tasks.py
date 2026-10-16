@@ -56,6 +56,13 @@ class TaskModuleTests(unittest.TestCase):
             report_rows, date(2026, 10, 14), date(2026, 10, 14), "Todas", ["Karen"]
         )
         self.assertTrue(pdf.startswith(b"%PDF"))
+
+    def test_task_can_have_multiple_assignees(self):
+        tasks.create_task(
+            "Tarea compartida", "", ["Danna", "Karen"], "Media", date(2026, 10, 14)
+        )
+        row = tasks.list_tasks(assignees=["Karen"])[0]
+        self.assertEqual(tasks.task_assignees(row), ["Danna", "Karen"])
 class FakeResponse:
     def __init__(self, data):
         self.data = data
@@ -169,12 +176,13 @@ class ReminderModuleTests(unittest.TestCase):
 
     def test_reminder_alert_is_acknowledged_and_hidden_from_tasks(self):
         day = date(2026, 10, 16)
-        reminders.create_reminder("Llamar al cliente", day)
+        reminders.create_reminder("Llamar al cliente", day, ["Danna", "Nia"])
 
         self.assertEqual(tasks.list_tasks(), [])
         alerts = reminders.pending_reminders_for(day)
         self.assertEqual(len(alerts), 1)
         self.assertEqual(alerts[0]["description"], "Llamar al cliente")
+        self.assertEqual(alerts[0]["assignees"], ["Danna", "Nia"])
 
         reminders.acknowledge_reminders([alerts[0]["id"]])
         self.assertEqual(reminders.pending_reminders_for(day), [])

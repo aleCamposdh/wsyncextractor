@@ -58,6 +58,7 @@ from tasks import (
     report_tasks,
     set_priority,
     set_completed,
+    task_assignees,
 )
 from reminders import (
     acknowledge_reminders,
@@ -515,7 +516,7 @@ hr { border: none !important; border-top: 1px solid var(--ws-border) !important;
   border:0 !important; box-shadow:none !important; min-height:1.6rem !important; height:1.6rem !important;
   padding:0 .2rem !important; color:#64748B !important; background:transparent !important;
 }
-.person-Danna { color:#A16207 !important; background:#FEF3C7 !important; }
+.person-Danna { color:#BE185D !important; background:#FCE7F3 !important; }
 .priority-Alta { color:#B91C1C; background:#FEE2E2; }
 .priority-Media { color:#A16207; background:#FEF3C7; }
 .priority-Baja { color:#047857; background:#D1FAE5; }
@@ -528,6 +529,8 @@ hr { border: none !important; border-top: 1px solid var(--ws-border) !important;
 }
 .reminder-date { color:#475569; font-size:.78rem; font-weight:600; white-space:nowrap; }
 .reminder-date-today { color:#B91C1C; }
+.reminder-assignees { display:flex; align-items:center; justify-content:center; flex-wrap:wrap; gap:.22rem; margin:0; }
+.reminder-assignees .person-pill { padding:.12rem .42rem; font-size:.65rem; }
 [class*="st-key-reminder_bell_"] [data-testid="stButton"] button {
   width:max-content !important; min-width:3.1rem !important; margin-left:auto !important;
   border-radius:999px !important; font-size:1.25rem !important; position:relative !important;
@@ -565,6 +568,7 @@ hr { border: none !important; border-top: 1px solid var(--ws-border) !important;
   font-size:.72rem !important; font-weight:600 !important;
 }
 [class*="st-key-task_badge_high_"] [data-testid="stButton"] button { color:#B91C1C !important; background:#FEE2E2 !important; }
+[class*="st-key-task_badge_medium_"] [data-testid="stButton"] button { color:#C2410C !important; background:#FFEDD5 !important; }
 [class*="st-key-task_badge_pending_"] [data-testid="stButton"] button { color:#475569 !important; background:#E2E8F0 !important; }
 [class*="st-key-task_badge_completed_"] [data-testid="stButton"] button { color:#047857 !important; background:#D1FAE5 !important; opacity:1 !important; }
 [data-testid="stTabs"] [data-baseweb="tab-list"] { gap:.35rem; border-bottom:1px solid var(--ws-border); }
@@ -591,11 +595,11 @@ hr { border: none !important; border-top: 1px solid var(--ws-border) !important;
   [class*="st-key-task_summary_"] [data-testid="stButton"] button strong { font-size:1.3rem !important; }
   [class*="st-key-task_table_header"] { display:none !important; }
   .task-mobile-header {
-    display:grid; grid-template-columns:minmax(0,1fr) 116px 58px;
+    display:grid; grid-template-columns:minmax(0,1fr) 108px 84px 50px;
     gap:.5rem; padding:0 .65rem .38rem; color:#475569; font-size:.58rem;
     font-weight:700; text-transform:uppercase; letter-spacing:.025em;
   }
-  .task-mobile-header span:nth-child(2), .task-mobile-header span:nth-child(3) { text-align:center; }
+  .task-mobile-header span:nth-child(n+2) { text-align:center; }
   .task-mobile-header span { white-space:nowrap; }
   [class*="st-key-task_desktop_row_"] { display:none !important; }
   [class*="st-key-task_mobile_row_"] {
@@ -605,19 +609,19 @@ hr { border: none !important; border-top: 1px solid var(--ws-border) !important;
   }
   [class*="st-key-task_mobile_row_"] [data-testid="stHorizontalBlock"] {
     display:grid !important;
-    grid-template-columns:minmax(0,1fr) 116px 58px !important;
+    grid-template-columns:minmax(0,1fr) 108px 84px 50px !important;
     gap:.5rem !important; align-items:center !important; width:100% !important;
   }
   [class*="st-key-task_mobile_row_"] [data-testid="column"] {
     width:100% !important; min-width:0 !important; max-width:100% !important; flex:none !important;
   }
-  [class*="st-key-task_mobile_row_"] .task-badges {
-    min-height:1.75rem; height:1.75rem; flex-direction:column; justify-content:center;
-    align-items:center; gap:0; margin:0 0 .45rem 0 !important;
+  [class*="st-key-task_mobile_row_"] .task-assignees-grid {
+    display:grid !important; grid-template-columns:repeat(2,max-content) !important;
+    justify-content:center !important; align-items:center !important;
+    gap:.2rem .25rem !important; width:100% !important;
   }
-  [class*="st-key-task_mobile_row_"] [data-testid="column"]:nth-child(2) > [data-testid="stVerticalBlock"] {
-    display:flex !important; flex-direction:column !important; align-items:center !important;
-    justify-content:center !important; gap:0 !important;
+  [class*="st-key-task_mobile_row_"] .task-assignees-grid .person-pill {
+    font-size:.59rem !important; padding:.1rem .3rem !important; text-align:center !important;
   }
   [class*="st-key-task_mobile_row_"] [class*="st-key-task_badge_"] {
     display:flex !important; justify-content:center !important; width:100% !important;
@@ -625,10 +629,7 @@ hr { border: none !important; border-top: 1px solid var(--ws-border) !important;
   }
   [class*="st-key-task_mobile_row_"] [class*="st-key-task_badge_"] [data-testid="stButton"] button {
     width:max-content !important; min-width:max-content !important; max-width:none !important;
-    white-space:nowrap !important; padding:.15rem .65rem !important;
-  }
-  [class*="st-key-task_badge_high_mobile_"] [data-testid="stButton"] button {
-    transform:translateX(19px) !important;
+    white-space:nowrap !important; padding:.12rem .42rem !important; font-size:.62rem !important;
   }
   [class*="st-key-task_mobile_row_"] [class*="st-key-task_badge_"] [data-testid="stButton"] button p {
     white-space:nowrap !important; word-break:normal !important; overflow-wrap:normal !important;
@@ -651,11 +652,22 @@ hr { border: none !important; border-top: 1px solid var(--ws-border) !important;
     padding:.15rem !important; margin:0 auto !important;
   }
   [class*="st-key-reminder_row_"] [data-testid="stHorizontalBlock"] {
-    display:grid !important; grid-template-columns:minmax(0,1fr) 64px 54px !important;
+    display:grid !important; grid-template-columns:minmax(0,1fr) 118px 78px 50px !important;
     gap:.4rem !important; align-items:center !important;
   }
   [class*="st-key-reminder_row_"] [data-testid="column"] {
     width:100% !important; min-width:0 !important; flex:none !important;
+  }
+  [class*="st-key-reminder_row_"] .reminder-assignees {
+    display:grid !important; grid-template-columns:repeat(2,max-content) !important;
+    justify-content:center !important; align-items:center !important;
+    gap:.2rem .28rem !important; width:100% !important;
+  }
+  [class*="st-key-reminder_row_"] .reminder-assignees .person-pill {
+    font-size:.61rem !important; padding:.1rem .34rem !important; text-align:center !important;
+  }
+  [class*="st-key-reminder_row_"] .reminder-assignees:has(.person-pill:nth-child(3)) {
+    transform:translateY(-7px) !important;
   }
   [class*="st-key-reminder_delete_"] [data-testid="stButton"] button {
     width:2.2rem !important; min-width:2.2rem !important; max-width:2.2rem !important;
@@ -810,7 +822,7 @@ def show_task_detail(task: dict):
     st.markdown(f"### {html.escape(task['title'])}")
     st.markdown(
         '<div class="task-detail-grid">'
-        f'<div class="task-detail-item"><div class="task-detail-label">Asignada a</div><div class="task-detail-value">{html.escape(task["assignee"])}</div></div>'
+        f'<div class="task-detail-item"><div class="task-detail-label">Asignada a</div><div class="task-detail-value">{html.escape(", ".join(task_assignees(task)))}</div></div>'
         f'<div class="task-detail-item"><div class="task-detail-label">Fecha</div><div class="task-detail-value">{due_date}</div></div>'
         f'<div class="task-detail-item"><div class="task-detail-label">Prioridad</div><div class="task-detail-value">{html.escape(task["priority"])}</div></div>'
         f'<div class="task-detail-item"><div class="task-detail-label">Estado</div><div class="task-detail-value">{status}</div></div>'
@@ -825,6 +837,14 @@ def show_task_detail(task: dict):
 def show_reminder_detail(reminder: dict):
     reminder_day = date.fromisoformat(reminder["reminder_date"])
     st.caption(reminder_day.strftime("%d/%m/%Y"))
+    reminder_people = "".join(
+        f'<span class="person-pill person-{html.escape(name)}" style="color:{ASSIGNEE_COLORS.get(name, "#475569")};'
+        f'background:{ASSIGNEE_COLORS.get(name, "#475569")}18">{html.escape(name)}</span>'
+        for name in (reminder.get("assignees") or [])
+    )
+    st.markdown(
+        f'<div class="reminder-assignees">{reminder_people}</div>', unsafe_allow_html=True
+    )
     st.markdown(
         f'<div style="white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.55">'
         f'{html.escape(reminder["description"])}</div>',
@@ -840,8 +860,9 @@ def show_today_reminder_alerts(alert_reminders: list[dict]):
         short_description = (
             description if len(description) <= 72 else f"{description[:69].rstrip()}…"
         )
+        people = ", ".join(reminder.get("assignees") or [])
         if st.button(
-            short_description,
+            f"{short_description} · {people}",
             key=f'open_alert_reminder_{reminder["id"]}',
             use_container_width=True,
         ):
@@ -864,14 +885,18 @@ def render_reminders_board():
                 height=90,
             )
             reminder_date = st.date_input("Fecha *", value=date.today(), key="new_reminder_date")
+            reminder_assignees = st.multiselect(
+                "Asignar a *", ASSIGNEES, default=[ASSIGNEES[0]],
+                key="new_reminder_assignees",
+            )
             submitted = st.form_submit_button(
                 "Crear recordatorio", type="primary", use_container_width=True
             )
             if submitted:
-                if not description.strip():
-                    st.error("Escribe la descripción del recordatorio.")
+                if not description.strip() or not reminder_assignees:
+                    st.error("Escribe la descripción y selecciona al menos una persona.")
                 else:
-                    create_reminder(description, reminder_date)
+                    create_reminder(description, reminder_date, reminder_assignees)
                     st.success("Recordatorio creado correctamente.")
                     st.rerun()
 
@@ -908,12 +933,17 @@ def render_reminders_board():
         is_highlighted = st.session_state.get("highlight_reminder_id") == reminder["id"]
         row_kind = "highlight" if is_highlighted else "normal"
         with st.container(key=f'reminder_row_{row_kind}_{reminder["id"]}'):
-            description_col, date_col, action_col = st.columns(
-                [5, 1.15, .55], vertical_alignment="center"
+            description_col, people_col, date_col, action_col = st.columns(
+                [4.2, 2, 1.15, .55], vertical_alignment="center"
             )
             description = reminder["description"]
             short_description = (
                 description if len(description) <= 90 else f"{description[:87].rstrip()}…"
+            )
+            reminder_people = "".join(
+                f'<span class="person-pill person-{html.escape(name)}" style="color:{ASSIGNEE_COLORS.get(name, "#475569")};'
+                f'background:{ASSIGNEE_COLORS.get(name, "#475569")}18">{html.escape(name)}</span>'
+                for name in (reminder.get("assignees") or [])
             )
             with description_col:
                 with st.container(key=f'reminder_open_{reminder["id"]}'):
@@ -922,6 +952,10 @@ def render_reminders_board():
                         help="Ver recordatorio completo", use_container_width=True,
                     ):
                         show_reminder_detail(reminder)
+            people_col.markdown(
+                f'<div class="reminder-assignees">{reminder_people}</div>',
+                unsafe_allow_html=True,
+            )
             date_col.markdown(
                 f'<div class="reminder-date {date_class}">{date_label}</div>',
                 unsafe_allow_html=True,
@@ -1000,7 +1034,10 @@ def render_tasks_module():
             )
             form_col1, form_col2, form_col3 = st.columns(3)
             with form_col1:
-                assignee = st.selectbox("Asignar a *", ASSIGNEES)
+                assignee = st.multiselect(
+                    "Asignar a *", ASSIGNEES, default=[ASSIGNEES[0]],
+                    key="new_task_assignees",
+                )
             with form_col2:
                 priority = st.selectbox("Prioridad *", PRIORITIES, index=1)
             with form_col3:
@@ -1009,8 +1046,8 @@ def render_tasks_module():
                 "Crear tarea", type="primary", use_container_width=True
             )
             if submitted:
-                if not title.strip():
-                    st.error("Escribe el nombre de la tarea.")
+                if not title.strip() or not assignee:
+                    st.error("Escribe el nombre y selecciona al menos una persona.")
                 else:
                     create_task(title, description, assignee, priority, due_date)
                     st.success("Tarea creada correctamente.")
@@ -1091,13 +1128,28 @@ def render_tasks_module():
                 column.markdown(f'<div class="task-grid-header">{label}</div>', unsafe_allow_html=True)
         st.markdown(
             '<div class="task-mobile-header"><span>Tarea</span>'
-            '<span>Información</span><span>Acciones</span></div>',
+            '<span>Personas</span><span>Estado</span><span>Acciones</span></div>',
             unsafe_allow_html=True,
         )
 
         for task in visible_tasks:
-            person_color = ASSIGNEE_COLORS.get(task["assignee"], "#475569")
+            assigned_names = task_assignees(task)
+            person_badges = "".join(
+                f'<span class="person-pill person-{html.escape(name)}" '
+                f'style="color:{ASSIGNEE_COLORS.get(name, "#475569")};'
+                f'background:{ASSIGNEE_COLORS.get(name, "#475569")}18">'
+                f'{html.escape(name)}</span>' for name in assigned_names
+            )
             done = bool(task["completed"])
+            if done:
+                badge_label, badge_kind = "Completada", "completed"
+            elif task["priority"] == "Alta":
+                badge_label, badge_kind = "Alta", "high"
+            elif task["priority"] == "Media":
+                badge_label, badge_kind = "Medio", "medium"
+            else:
+                badge_label, badge_kind = "Pendiente", "pending"
+            next_priority = {"Baja": "Media", "Media": "Alta", "Alta": "Baja"}
             full_description = task["description"] or "Sin descripción"
             short_description = (
                 full_description if len(full_description) <= 62
@@ -1128,21 +1180,17 @@ def render_tasks_module():
                 with row_columns[1]:
                     info_person_col, info_badge_col = st.columns([1, 1], vertical_alignment="center")
                     info_person_col.markdown(
-                        f'<span class="person-pill person-{html.escape(task["assignee"])}" '
-                        f'style="color:{person_color};background:{person_color}18">'
-                        f'{html.escape(task["assignee"])}</span>', unsafe_allow_html=True,
+                        f'<div class="task-badges">{person_badges}</div>', unsafe_allow_html=True,
                     )
-                    badge_label = "Completada" if done else ("Alta" if task["priority"] == "Alta" else "Pendiente")
-                    badge_kind = "completed" if done else ("high" if task["priority"] == "Alta" else "pending")
                     with info_badge_col:
                         with st.container(key=f'task_badge_{badge_kind}_desktop_{task["id"]}'):
                             if st.button(
                                 badge_label, key=f'task_desktop_priority_{task["id"]}',
                                 disabled=done,
                                 help=("La tarea ya está completada" if done
-                                      else "Cambiar entre prioridad pendiente y alta"),
+                                      else "Cambiar prioridad: pendiente, medio o alta"),
                             ):
-                                set_priority(task["id"], "Media" if task["priority"] == "Alta" else "Alta")
+                                set_priority(task["id"], next_priority[task["priority"]])
                                 st.toast("Prioridad actualizada.")
                                 st.rerun()
                 row_columns[2].markdown(
@@ -1170,8 +1218,8 @@ def render_tasks_module():
                             st.rerun()
 
             with st.container(key=f'task_mobile_row_{task["id"]}'):
-                mobile_task_col, mobile_badges_col, mobile_actions_col = st.columns(
-                    [1.7, .8, .42], vertical_alignment="center"
+                mobile_task_col, mobile_people_col, mobile_status_col, mobile_actions_col = st.columns(
+                    [1.7, .95, .7, .42], vertical_alignment="center"
                 )
                 with mobile_task_col:
                     with st.container(key=f'task_open_mobile_{task["id"]}'):
@@ -1182,21 +1230,19 @@ def render_tasks_module():
                             use_container_width=True,
                         ):
                             show_task_detail(task)
-                mobile_badges_col.markdown(
-                    f'<div class="task-badges"><span class="person-pill person-{html.escape(task["assignee"])}" '
-                    f'style="color:{person_color};background:{person_color}18">'
-                    f'{html.escape(task["assignee"])}</span></div>',
+                mobile_people_col.markdown(
+                    f'<div class="task-assignees-grid">{person_badges}</div>',
                     unsafe_allow_html=True,
                 )
-                with mobile_badges_col:
+                with mobile_status_col:
                     with st.container(key=f'task_badge_{badge_kind}_mobile_{task["id"]}'):
                         if st.button(
                             badge_label, key=f'task_mobile_priority_{task["id"]}',
                             disabled=done,
                             help=("La tarea ya está completada" if done
-                                  else "Cambiar entre prioridad pendiente y alta"),
+                                  else "Cambiar prioridad: pendiente, medio o alta"),
                         ):
-                            set_priority(task["id"], "Media" if task["priority"] == "Alta" else "Alta")
+                            set_priority(task["id"], next_priority[task["priority"]])
                             st.toast("Prioridad actualizada.")
                             st.rerun()
                 with mobile_actions_col:

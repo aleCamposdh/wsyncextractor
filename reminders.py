@@ -5,6 +5,7 @@ from datetime import date, datetime, timezone
 from typing import Iterable
 
 from database import get_supabase
+from tasks import ASSIGNEES
 
 
 REMINDERS_TABLE = "worksync_reminders"
@@ -25,15 +26,20 @@ def init_reminders_db() -> None:
         _fallback_to_tasks = True
 
 
-def create_reminder(description: str, reminder_date: date) -> None:
+def create_reminder(description: str, reminder_date: date,
+                    assignees: Iterable[str] | None = None) -> None:
     description = description.strip()
+    chosen_assignees = list(dict.fromkeys(assignees or []))
     if not description:
         raise ValueError("La descripcion es obligatoria")
+    if not chosen_assignees or any(name not in ASSIGNEES for name in chosen_assignees):
+        raise ValueError("Selecciona al menos una persona valida")
     if _fallback_to_tasks:
         get_supabase().table(TASKS_FALLBACK_TABLE).insert({
             "title": REMINDER_SENTINEL,
             "description": description,
-            "assignee": "Danna",
+            "assignee": chosen_assignees[0],
+            "assigned_to": ", ".join(chosen_assignees),
             "priority": "Baja",
             "due_date": reminder_date.isoformat(),
         }).execute()
@@ -41,6 +47,7 @@ def create_reminder(description: str, reminder_date: date) -> None:
         get_supabase().table(REMINDERS_TABLE).insert({
             "description": description,
             "reminder_date": reminder_date.isoformat(),
+            "assignees": chosen_assignees,
         }).execute()
 
 
@@ -55,6 +62,10 @@ def list_reminders() -> list[dict]:
             "reminder_date": row["due_date"],
             "acknowledged": bool(row["completed"]),
             "acknowledged_at": row.get("completed_at"),
+            "assignees": [
+                name.strip() for name in (row.get("assigned_to") or row["assignee"]).split(",")
+                if name.strip() in ASSIGNEES
+            ],
         } for row in rows]
     else:
         rows = (
@@ -73,6 +84,15 @@ def pending_reminders_for(day: date) -> list[dict]:
             .eq("due_date", day.isoformat())
             .eq("completed", False).execute().data or []
         )
+        rows = [{
+            **row,
+            "reminder_date": row["due_date"],
+            "acknowledged": bool(row["completed"]),
+            "assignees": [
+                name.strip() for name in (row.get("assigned_to") or row["assignee"]).split(",")
+                if name.strip() in ASSIGNEES
+            ],
+        } for row in rows]
     else:
         rows = (
             get_supabase().table(REMINDERS_TABLE)

@@ -28,7 +28,7 @@ from database import get_supabase
 TASKS_TABLE = "worksync_tasks"
 ASSIGNEES = ("Danna", "Karen", "Nia", "Tatiana")
 ASSIGNEE_COLORS = {
-    "Danna": "#CA8A04",
+    "Danna": "#DB2777",
     "Karen": "#EA580C",
     "Nia": "#7C3AED",
     "Tatiana": "#2563EB",
@@ -43,13 +43,25 @@ def init_db() -> None:
     get_supabase().table(TASKS_TABLE).select("id").limit(1).execute()
 
 
-def create_task(title: str, description: str, assignee: str, priority: str, due_date: date) -> None:
-    if assignee not in ASSIGNEES or priority not in PRIORITIES:
+def task_assignees(task: dict) -> list[str]:
+    stored = task.get("assigned_to") or ""
+    chosen = [name.strip() for name in stored.split(",") if name.strip() in ASSIGNEES]
+    primary = task.get("assignee")
+    if primary in ASSIGNEES and primary not in chosen:
+        chosen.insert(0, primary)
+    return chosen or ([primary] if primary else [])
+
+
+def create_task(title: str, description: str, assignee: str | Iterable[str],
+                priority: str, due_date: date) -> None:
+    chosen_assignees = ([assignee] if isinstance(assignee, str) else list(assignee))
+    if not chosen_assignees or any(name not in ASSIGNEES for name in chosen_assignees) or priority not in PRIORITIES:
         raise ValueError("Asignado o prioridad no validos")
     get_supabase().table(TASKS_TABLE).insert({
         "title": title.strip(),
         "description": description.strip(),
-        "assignee": assignee,
+        "assignee": chosen_assignees[0],
+        "assigned_to": ", ".join(dict.fromkeys(chosen_assignees)),
         "priority": priority,
         "due_date": due_date.isoformat(),
     }).execute()
@@ -58,7 +70,7 @@ def create_task(title: str, description: str, assignee: str, priority: str, due_
 def list_tasks(assignees: Iterable[str] | None = None, priorities: Iterable[str] | None = None,
                statuses: Iterable[str] | None = None) -> list[dict]:
     query = get_supabase().table(TASKS_TABLE).select("*").neq("title", REMINDER_SENTINEL)
-    for field, values in (("assignee", assignees), ("priority", priorities)):
+    for field, values in (("priority", priorities),):
         chosen = list(values or [])
         if chosen:
             query = query.in_(field, chosen)
@@ -66,6 +78,9 @@ def list_tasks(assignees: Iterable[str] | None = None, priorities: Iterable[str]
     if len(chosen_statuses) == 1:
         query = query.eq("completed", chosen_statuses[0] == "Completada")
     rows = query.execute().data or []
+    chosen_assignees = set(assignees or [])
+    if chosen_assignees:
+        rows = [task for task in rows if chosen_assignees.intersection(task_assignees(task))]
     return sorted(
         rows,
         key=lambda task: (
@@ -113,10 +128,10 @@ def report_tasks(start: date, end: date, status: str,
         query = query.eq("completed", True)
     elif status == "Pendientes":
         query = query.eq("completed", False)
-    chosen_assignees = list(assignees or [])
-    if chosen_assignees:
-        query = query.in_("assignee", chosen_assignees)
     rows = query.execute().data or []
+    chosen_assignees = set(assignees or [])
+    if chosen_assignees:
+        rows = [task for task in rows if chosen_assignees.intersection(task_assignees(task))]
     return sorted(
         rows,
         key=lambda task: (PRIORITY_RANK.get(task["priority"], 99), task["due_date"]),
@@ -206,7 +221,7 @@ def build_pdf(tasks: list[dict], start: date, end: date, status: str,
         for task in tasks:
             data.append([
                 Paragraph(html.escape(task["title"]), cell_style),
-                Paragraph(html.escape(task["assignee"]), center_style),
+                Paragraph(html.escape(", ".join(task_assignees(task))), center_style),
                 Paragraph(task["priority"], center_style),
                 Paragraph(datetime.fromisoformat(task["due_date"]).strftime("%d/%m/%Y"), center_style),
                 Paragraph("Completada" if task["completed"] else "Pendiente", center_style),
