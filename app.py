@@ -502,11 +502,15 @@ hr { border: none !important; border-top: 1px solid var(--ws-border) !important;
 .task-mobile-header { display:none; }
 [class*="st-key-task_desktop_row_"], [class*="st-key-task_mobile_row_"] {
   border:1px solid var(--ws-border); border-radius:var(--r-sm);
-  background:var(--ws-white); padding:.38rem .65rem !important; margin-bottom:.28rem;
+  background:var(--ws-white); padding:.25rem .55rem !important; margin-bottom:-.35rem;
 }
 [class*="st-key-task_mobile_row_"] { display:none; }
 [class*="st-key-task_desktop_row_"] [data-testid="stVerticalBlock"],
-[class*="st-key-task_mobile_row_"] [data-testid="stVerticalBlock"] { gap:.2rem !important; }
+[class*="st-key-task_mobile_row_"] [data-testid="stVerticalBlock"] { gap:.12rem !important; }
+[class*="st-key-task_desktop_actions_"] [data-testid="stVerticalBlock"] { gap:.16rem !important; }
+[class*="st-key-task_desktop_actions_"] [data-testid="stButton"] button {
+  min-height:1.85rem !important; height:1.85rem !important; padding:.1rem .35rem !important;
+}
 [class*="st-key-task_detail_"] [data-testid="stButton"] button {
   border:0 !important; box-shadow:none !important; min-height:1.6rem !important; height:1.6rem !important;
   padding:0 .2rem !important; color:#64748B !important; background:transparent !important;
@@ -520,7 +524,7 @@ hr { border: none !important; border-top: 1px solid var(--ws-border) !important;
 .reminder-toolbar { display:flex; align-items:center; justify-content:space-between; gap:1rem; }
 [class*="st-key-reminder_row_"] {
   border:1px solid var(--ws-border); border-radius:var(--r-sm); background:var(--ws-white);
-  padding:.65rem .8rem; margin-bottom:.45rem;
+  padding:.3rem .65rem; margin-bottom:-.3rem;
 }
 .reminder-date { color:#475569; font-size:.78rem; font-weight:600; white-space:nowrap; }
 .reminder-date-today { color:#B91C1C; }
@@ -540,12 +544,12 @@ hr { border: none !important; border-top: 1px solid var(--ws-border) !important;
   border:2px solid white; font-size:.68rem; font-weight:700; line-height:1;
 }
 [class*="st-key-reminder_delete_"] [data-testid="stButton"] button {
-  min-height:2.1rem !important; height:2.1rem !important; padding:.2rem .55rem !important;
+  min-height:1.8rem !important; height:1.8rem !important; padding:.1rem .45rem !important;
 }
 [class*="st-key-reminder_open_"] [data-testid="stButton"] button {
   width:100% !important; justify-content:flex-start !important; text-align:left !important;
   border:0 !important; background:transparent !important; box-shadow:none !important;
-  padding:.2rem 0 !important; min-height:2rem !important; height:auto !important;
+  padding:.1rem 0 !important; min-height:1.7rem !important; height:auto !important;
 }
 [class*="st-key-reminder_open_"] [data-testid="stButton"] button p {
   width:100%; text-align:left; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
@@ -595,8 +599,8 @@ hr { border: none !important; border-top: 1px solid var(--ws-border) !important;
   [class*="st-key-task_desktop_row_"] { display:none !important; }
   [class*="st-key-task_mobile_row_"] {
     display:block !important; width:100% !important; max-width:100% !important;
-    box-sizing:border-box; min-height:6.6rem; padding:.6rem .65rem !important;
-    margin-bottom:.45rem; overflow:visible !important;
+    box-sizing:border-box; min-height:5.5rem; padding:.4rem .55rem !important;
+    margin-bottom:-.15rem; overflow:visible !important;
   }
   [class*="st-key-task_mobile_row_"] [data-testid="stHorizontalBlock"] {
     display:grid !important;
@@ -631,7 +635,7 @@ hr { border: none !important; border-top: 1px solid var(--ws-border) !important;
   [class*="st-key-task_open_mobile_"] [data-testid="stButton"],
   [class*="st-key-task_open_mobile_"] [data-testid="stButton"] > div { width:100% !important; }
   [class*="st-key-task_open_mobile_"] [data-testid="stButton"] button {
-    display:block !important; width:100% !important; min-height:4.9rem !important;
+    display:block !important; width:100% !important; min-height:4.2rem !important;
     text-align:left !important;
     justify-content:flex-start !important; align-items:flex-start !important;
   }
