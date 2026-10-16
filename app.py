@@ -56,6 +56,7 @@ from tasks import (
     init_db,
     list_tasks,
     report_tasks,
+    set_priority,
     set_completed,
 )
 
@@ -434,6 +435,24 @@ hr { border: none !important; border-top: 1px solid var(--ws-border) !important;
 .task-summary-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:1rem; }
 .task-summary .label { color: var(--ws-muted); font-size: .72rem; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; }
 .task-summary .value { color: var(--ws-text); font-family: 'Sora',sans-serif; font-size: 1.55rem; font-weight: 700; margin-top: .25rem; }
+[class*="st-key-task_summary_"] [data-testid="stButton"] button {
+  min-height:5.1rem !important; padding:.8rem 1rem !important; justify-content:flex-start !important;
+  text-align:left !important; white-space:pre-line !important;
+}
+[class*="st-key-task_summary_"] [data-testid="stButton"] button p {
+  width:100%; text-align:left; color:var(--ws-muted); font-size:.72rem; font-weight:600;
+  text-transform:uppercase; letter-spacing:.05em; line-height:1.7;
+}
+[class*="st-key-task_summary_"] [data-testid="stButton"] button strong {
+  color:var(--ws-text); font-family:'Sora',sans-serif; font-size:1.55rem; letter-spacing:0;
+}
+[class*="st-key-task_summary_"][class*="_active"] [data-testid="stButton"] button {
+  background:#EFF8FC !important; border-color:#8FC9DC !important;
+  box-shadow:0 0 0 1px rgba(3,106,140,.06) !important;
+}
+[class*="st-key-task_summary_"][class*="_active"] [data-testid="stButton"] button p {
+  color:#426779 !important;
+}
 .task-table-wrap { overflow-x:auto; border:1px solid var(--ws-border); border-radius:var(--r-md); background:white; }
 .task-table { width:100%; border-collapse:collapse; font-size:.86rem; }
 .task-table th { background:#F1F5F9; color:#475569; font-size:.7rem; text-transform:uppercase; letter-spacing:.05em; text-align:left; padding:.78rem .9rem; }
@@ -490,6 +509,14 @@ hr { border: none !important; border-top: 1px solid var(--ws-border) !important;
 .priority-Baja { color:#047857; background:#D1FAE5; }
 .status-done { color:#047857; background:#D1FAE5; }
 .status-open { color:#475569; background:#E2E8F0; }
+[class*="st-key-task_badge_"] [data-testid="stButton"] button {
+  border:0 !important; border-radius:999px !important; min-height:1.75rem !important;
+  height:1.75rem !important; padding:.15rem .55rem !important; box-shadow:none !important;
+  font-size:.72rem !important; font-weight:600 !important;
+}
+[class*="st-key-task_badge_high_"] [data-testid="stButton"] button { color:#B91C1C !important; background:#FEE2E2 !important; }
+[class*="st-key-task_badge_pending_"] [data-testid="stButton"] button { color:#475569 !important; background:#E2E8F0 !important; }
+[class*="st-key-task_badge_completed_"] [data-testid="stButton"] button { color:#047857 !important; background:#D1FAE5 !important; opacity:1 !important; }
 [data-testid="stTabs"] [data-baseweb="tab-list"] { gap:.35rem; border-bottom:1px solid var(--ws-border); }
 [data-testid="stTabs"] button[role="tab"] { font-family:'Rubik',sans-serif; font-weight:600; padding:.75rem 1.1rem; }
 
@@ -500,9 +527,21 @@ hr { border: none !important; border-top: 1px solid var(--ws-border) !important;
   .task-summary { padding:.6rem .7rem; min-height:4rem; }
   .task-summary .label { font-size:.61rem; letter-spacing:.025em; }
   .task-summary .value { font-size:1.2rem; margin-top:.08rem; }
+  [data-testid="stHorizontalBlock"]:has([class*="st-key-task_summary_"]) {
+    display:grid !important; grid-template-columns:repeat(2,minmax(0,1fr)) !important;
+    gap:.55rem !important; width:100% !important;
+  }
+  [data-testid="stHorizontalBlock"]:has([class*="st-key-task_summary_"]) > [data-testid="column"] {
+    width:100% !important; min-width:0 !important; flex:none !important;
+  }
+  [class*="st-key-task_summary_"] [data-testid="stButton"] button {
+    min-height:4.7rem !important; padding:.55rem .7rem !important;
+  }
+  [class*="st-key-task_summary_"] [data-testid="stButton"] button p { font-size:.62rem !important; }
+  [class*="st-key-task_summary_"] [data-testid="stButton"] button strong { font-size:1.3rem !important; }
   [class*="st-key-task_table_header"] { display:none !important; }
   .task-mobile-header {
-    display:grid; grid-template-columns:minmax(0,1fr) 104px 58px;
+    display:grid; grid-template-columns:minmax(0,1fr) 116px 58px;
     gap:.5rem; padding:0 .65rem .38rem; color:#475569; font-size:.58rem;
     font-weight:700; text-transform:uppercase; letter-spacing:.025em;
   }
@@ -516,15 +555,33 @@ hr { border: none !important; border-top: 1px solid var(--ws-border) !important;
   }
   [class*="st-key-task_mobile_row_"] [data-testid="stHorizontalBlock"] {
     display:grid !important;
-    grid-template-columns:minmax(0,1fr) 104px 58px !important;
+    grid-template-columns:minmax(0,1fr) 116px 58px !important;
     gap:.5rem !important; align-items:center !important; width:100% !important;
   }
   [class*="st-key-task_mobile_row_"] [data-testid="column"] {
     width:100% !important; min-width:0 !important; max-width:100% !important; flex:none !important;
   }
   [class*="st-key-task_mobile_row_"] .task-badges {
-    min-height:4.9rem; flex-direction:column; justify-content:center;
-    align-items:center; gap:.25rem;
+    min-height:1.75rem; height:1.75rem; flex-direction:column; justify-content:center;
+    align-items:center; gap:0; margin:0 0 .45rem 0 !important;
+  }
+  [class*="st-key-task_mobile_row_"] [data-testid="column"]:nth-child(2) > [data-testid="stVerticalBlock"] {
+    display:flex !important; flex-direction:column !important; align-items:center !important;
+    justify-content:center !important; gap:0 !important;
+  }
+  [class*="st-key-task_mobile_row_"] [class*="st-key-task_badge_"] {
+    display:flex !important; justify-content:center !important; width:100% !important;
+    clear:both !important; margin-top:.35rem !important;
+  }
+  [class*="st-key-task_mobile_row_"] [class*="st-key-task_badge_"] [data-testid="stButton"] button {
+    width:max-content !important; min-width:max-content !important; max-width:none !important;
+    white-space:nowrap !important; padding:.15rem .65rem !important;
+  }
+  [class*="st-key-task_badge_high_mobile_"] [data-testid="stButton"] button {
+    transform:translateX(19px) !important;
+  }
+  [class*="st-key-task_mobile_row_"] [class*="st-key-task_badge_"] [data-testid="stButton"] button p {
+    white-space:nowrap !important; word-break:normal !important; overflow-wrap:normal !important;
   }
   [class*="st-key-task_open_mobile_"] [data-testid="stButton"],
   [class*="st-key-task_open_mobile_"] [data-testid="stButton"] > div { width:100% !important; }
@@ -741,24 +798,43 @@ def render_tasks_module():
                 "Estado", ["Pendiente", "Completada"], placeholder="Todos los estados"
             )
 
-    tasks = list_tasks(assignee_filter, priority_filter, status_filter)
     all_tasks = list_tasks()
     pending_count = sum(not task["completed"] for task in all_tasks)
     completed_count = sum(bool(task["completed"]) for task in all_tasks)
     high_count = sum(not task["completed"] and task["priority"] == "Alta" for task in all_tasks)
-    summary_cards = []
-    for label, value in zip(
-        ("Total", "Pendientes", "Completadas", "Altas pendientes"),
-        (len(all_tasks), pending_count, completed_count, high_count),
-    ):
-        summary_cards.append(
-            f'<div class="task-summary"><div class="label">{label}</div>'
-            f'<div class="value">{value}</div></div>'
-        )
-    st.markdown(
-        f'<div class="task-summary-grid">{"".join(summary_cards)}</div>',
-        unsafe_allow_html=True,
+    active_summary = st.session_state.get("task_summary_filter", "total")
+    summary_columns = st.columns(4)
+    summary_options = (
+        ("total", "Total", len(all_tasks)),
+        ("pending", "Pendientes", pending_count),
+        ("completed", "Completadas", completed_count),
+        ("high", "Altas pendientes", high_count),
     )
+    for column, (filter_name, label, value) in zip(summary_columns, summary_options):
+        with column:
+            state_suffix = "active" if active_summary == filter_name else "inactive"
+            with st.container(key=f"task_summary_{filter_name}_{state_suffix}"):
+                if st.button(
+                    f"{label}\n\n**{value}**",
+                    key=f"task_summary_button_{filter_name}",
+                    type="secondary",
+                    use_container_width=True,
+                    help=f"Mostrar {label.lower()}",
+                ):
+                    st.session_state.task_summary_filter = filter_name
+                    st.session_state.task_page = 1
+                    st.rerun()
+
+    effective_assignees = assignee_filter
+    effective_priorities = priority_filter
+    effective_statuses = status_filter
+    if active_summary == "pending":
+        effective_statuses = ["Pendiente"]
+    elif active_summary == "completed":
+        effective_statuses = ["Completada"]
+    elif active_summary == "high":
+        effective_priorities, effective_statuses = ["Alta"], ["Pendiente"]
+    tasks = list_tasks(effective_assignees, effective_priorities, effective_statuses)
 
     st.markdown("#### Tareas")
     st.caption("Las tareas se ordenan automáticamente: prioridad alta, media y baja.")
@@ -816,15 +892,26 @@ def render_tasks_module():
                                 help="Ver información completa",
                             ):
                                 show_task_detail(task)
-                row_columns[1].markdown(
-                    f'<div class="task-badges"><span class="person-pill person-{html.escape(task["assignee"])}" '
-                    f'style="color:{person_color};background:{person_color}18">'
-                    f'{html.escape(task["assignee"])}</span>'
-                    f'<span class="priority-pill priority-{task["priority"]}">{task["priority"]}</span>'
-                    f'<span class="status-pill {"status-done" if done else "status-open"}">'
-                    f'{"Completada" if done else "Pendiente"}</span></div>',
-                    unsafe_allow_html=True,
-                )
+                with row_columns[1]:
+                    info_person_col, info_badge_col = st.columns([1, 1], vertical_alignment="center")
+                    info_person_col.markdown(
+                        f'<span class="person-pill person-{html.escape(task["assignee"])}" '
+                        f'style="color:{person_color};background:{person_color}18">'
+                        f'{html.escape(task["assignee"])}</span>', unsafe_allow_html=True,
+                    )
+                    badge_label = "Completada" if done else ("Alta" if task["priority"] == "Alta" else "Pendiente")
+                    badge_kind = "completed" if done else ("high" if task["priority"] == "Alta" else "pending")
+                    with info_badge_col:
+                        with st.container(key=f'task_badge_{badge_kind}_desktop_{task["id"]}'):
+                            if st.button(
+                                badge_label, key=f'task_desktop_priority_{task["id"]}',
+                                disabled=done,
+                                help=("La tarea ya está completada" if done
+                                      else "Cambiar entre prioridad pendiente y alta"),
+                            ):
+                                set_priority(task["id"], "Media" if task["priority"] == "Alta" else "Alta")
+                                st.toast("Prioridad actualizada.")
+                                st.rerun()
                 row_columns[2].markdown(
                     f'<div class="task-grid-cell">{date.fromisoformat(task["due_date"]).strftime("%d/%m/%Y")}</div>',
                     unsafe_allow_html=True,
@@ -865,12 +952,20 @@ def render_tasks_module():
                 mobile_badges_col.markdown(
                     f'<div class="task-badges"><span class="person-pill person-{html.escape(task["assignee"])}" '
                     f'style="color:{person_color};background:{person_color}18">'
-                    f'{html.escape(task["assignee"])}</span>'
-                    f'<span class="priority-pill priority-{task["priority"]}">{task["priority"]}</span>'
-                    f'<span class="status-pill {"status-done" if done else "status-open"}">'
-                    f'{"Completada" if done else "Pendiente"}</span></div>',
+                    f'{html.escape(task["assignee"])}</span></div>',
                     unsafe_allow_html=True,
                 )
+                with mobile_badges_col:
+                    with st.container(key=f'task_badge_{badge_kind}_mobile_{task["id"]}'):
+                        if st.button(
+                            badge_label, key=f'task_mobile_priority_{task["id"]}',
+                            disabled=done,
+                            help=("La tarea ya está completada" if done
+                                  else "Cambiar entre prioridad pendiente y alta"),
+                        ):
+                            set_priority(task["id"], "Media" if task["priority"] == "Alta" else "Alta")
+                            st.toast("Prioridad actualizada.")
+                            st.rerun()
                 with mobile_actions_col:
                     with st.container(key=f'task_mobile_actions_{task["id"]}'):
                         if st.button(
@@ -936,15 +1031,20 @@ def render_tasks_module():
     st.markdown("---")
     st.markdown("### Reporte PDF")
     st.caption("Selecciona un día, semana, mes o rango personalizado de hasta un año.")
-    report_col1, report_col2, report_col3 = st.columns(3)
+    report_col1, report_col2, report_col3, report_col4 = st.columns(4)
     with report_col1:
         period = st.selectbox("Periodo", ["Día", "Semana", "Mes", "Personalizado"])
     with report_col2:
         report_status = st.selectbox("Estado de las tareas", ["Todas", "Completadas", "Pendientes"])
+    with report_col3:
+        report_assignees = st.multiselect(
+            "Persona asignada", ASSIGNEES, placeholder="Todas las personas",
+            key="report_assignees",
+        )
 
     today = date.today()
     if period == "Personalizado":
-        with report_col3:
+        with report_col4:
             custom_dates = st.date_input(
                 "Rango de fechas",
                 value=(today - timedelta(days=30), today),
@@ -955,7 +1055,7 @@ def render_tasks_module():
         else:
             report_start = report_end = custom_dates[0] if isinstance(custom_dates, (tuple, list)) else custom_dates
     else:
-        with report_col3:
+        with report_col4:
             reference_date = st.date_input("Fecha de referencia", value=today, key="report_reference")
         if period == "Día":
             report_start = report_end = reference_date
@@ -973,16 +1073,24 @@ def render_tasks_module():
     elif range_days > 366:
         st.error("El reporte puede abarcar como máximo un año.")
     else:
-        selected_report_tasks = report_tasks(report_start, report_end, report_status)
+        selected_report_tasks = report_tasks(
+            report_start, report_end, report_status, report_assignees
+        )
+        people_caption = ", ".join(report_assignees) if report_assignees else "Todas las personas"
         st.caption(
             f"{len(selected_report_tasks)} tareas · "
-            f"{report_start.strftime('%d/%m/%Y')} al {report_end.strftime('%d/%m/%Y')}"
+            f"{report_start.strftime('%d/%m/%Y')} al {report_end.strftime('%d/%m/%Y')} · "
+            f"{people_caption}"
         )
-        pdf_data = build_pdf(selected_report_tasks, report_start, report_end, report_status)
+        pdf_data = build_pdf(
+            selected_report_tasks, report_start, report_end, report_status, report_assignees
+        )
+        assignee_suffix = "_".join(name.lower() for name in report_assignees) or "todas"
         st.download_button(
             "Descargar reporte PDF",
             data=pdf_data,
-            file_name=f"reporte_tareas_{report_start.isoformat()}_{report_end.isoformat()}.pdf",
+            file_name=(f"reporte_tareas_{assignee_suffix}_"
+                       f"{report_start.isoformat()}_{report_end.isoformat()}.pdf"),
             mime="application/pdf",
             type="primary",
             use_container_width=True,

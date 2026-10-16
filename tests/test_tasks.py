@@ -38,6 +38,23 @@ class TaskModuleTests(unittest.TestCase):
             report_rows, date(2026, 10, 14), date(2026, 10, 14), "Completadas"
         )
         self.assertTrue(pdf.startswith(b"%PDF"))
+
+    def test_priority_update_and_report_by_assignee(self):
+        tasks.create_task("Tarea Danna", "", "Danna", "Media", date(2026, 10, 14))
+        tasks.create_task("Tarea Karen", "", "Karen", "Alta", date(2026, 10, 14))
+        danna_task = tasks.list_tasks(assignees=["Danna"])[0]
+
+        tasks.set_priority(danna_task["id"], "Alta")
+
+        self.assertEqual(tasks.list_tasks(assignees=["Danna"])[0]["priority"], "Alta")
+        report_rows = tasks.report_tasks(
+            date(2026, 10, 14), date(2026, 10, 14), "Todas", ["Karen"]
+        )
+        self.assertEqual([row["assignee"] for row in report_rows], ["Karen"])
+        pdf = tasks.build_pdf(
+            report_rows, date(2026, 10, 14), date(2026, 10, 14), "Todas", ["Karen"]
+        )
+        self.assertTrue(pdf.startswith(b"%PDF"))
 class FakeResponse:
     def __init__(self, data):
         self.data = data

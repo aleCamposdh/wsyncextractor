@@ -85,11 +85,21 @@ def set_completed(task_id: str, completed: bool) -> None:
     }).eq("id", task_id).execute()
 
 
+def set_priority(task_id: str, priority: str) -> None:
+    if priority not in PRIORITIES:
+        raise ValueError("Prioridad no valida")
+    get_supabase().table(TASKS_TABLE).update({
+        "priority": priority,
+        "updated_at": datetime.now(timezone.utc).isoformat(),
+    }).eq("id", task_id).execute()
+
+
 def delete_task(task_id: str) -> None:
     get_supabase().table(TASKS_TABLE).delete().eq("id", task_id).execute()
 
 
-def report_tasks(start: date, end: date, status: str) -> list[dict]:
+def report_tasks(start: date, end: date, status: str,
+                 assignees: Iterable[str] | None = None) -> list[dict]:
     query = (
         get_supabase()
         .table(TASKS_TABLE)
@@ -101,6 +111,9 @@ def report_tasks(start: date, end: date, status: str) -> list[dict]:
         query = query.eq("completed", True)
     elif status == "Pendientes":
         query = query.eq("completed", False)
+    chosen_assignees = list(assignees or [])
+    if chosen_assignees:
+        query = query.in_("assignee", chosen_assignees)
     rows = query.execute().data or []
     return sorted(
         rows,
@@ -108,7 +121,8 @@ def report_tasks(start: date, end: date, status: str) -> list[dict]:
     )
 
 
-def build_pdf(tasks: list[dict], start: date, end: date, status: str) -> bytes:
+def build_pdf(tasks: list[dict], start: date, end: date, status: str,
+              assignees: Iterable[str] | None = None) -> bytes:
     buffer = BytesIO()
     document = SimpleDocTemplate(
         buffer,
@@ -130,10 +144,13 @@ def build_pdf(tasks: list[dict], start: date, end: date, status: str) -> bytes:
     )
     cell_style = ParagraphStyle("Cell", parent=styles["BodyText"], fontSize=7.5, leading=9)
     center_style = ParagraphStyle("Center", parent=cell_style, alignment=TA_CENTER)
+    chosen_assignees = list(assignees or [])
+    assignee_label = ", ".join(chosen_assignees) if chosen_assignees else "Todas"
     story = [
         Paragraph("WorkSync · Reporte de tareas", title_style),
         Paragraph(
-            f"Periodo: {start.strftime('%d/%m/%Y')} – {end.strftime('%d/%m/%Y')} &nbsp; | &nbsp; Estado: {status}",
+            f"Periodo: {start.strftime('%d/%m/%Y')} – {end.strftime('%d/%m/%Y')}"
+            f" &nbsp; | &nbsp; Estado: {status} &nbsp; | &nbsp; Persona: {html.escape(assignee_label)}",
             subtitle_style,
         ),
     ]
@@ -157,6 +174,9 @@ def build_pdf(tasks: list[dict], start: date, end: date, status: str) -> bytes:
         ("FONTSIZE", (0, 1), (-1, 1), 18),
         ("TEXTCOLOR", (0, 1), (-1, 1), colors.HexColor("#0F172A")),
         ("ALIGN", (0, 0), (-1, -1), "CENTER"),
+        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+        ("TOPPADDING", (0, 0), (-1, -1), 0),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 0),
         ("BOX", (0, 0), (-1, -1), 0.5, colors.HexColor("#CDE8F2")),
         ("INNERGRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#CDE8F2")),
     ]))
