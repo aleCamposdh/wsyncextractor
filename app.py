@@ -545,6 +545,7 @@ hr { border: none !important; border-top: 1px solid var(--ws-border) !important;
 }
 [class*="st-key-reminder_delete_"] [data-testid="stButton"] button {
   min-height:1.8rem !important; height:1.8rem !important; padding:.1rem .45rem !important;
+  color:#B91C1C !important; background:#FFF7F7 !important; border-color:#FECACA !important;
 }
 [class*="st-key-reminder_open_"] [data-testid="stButton"] button {
   width:100% !important; justify-content:flex-start !important; text-align:left !important;
@@ -650,11 +651,20 @@ hr { border: none !important; border-top: 1px solid var(--ws-border) !important;
     padding:.15rem !important; margin:0 auto !important;
   }
   [class*="st-key-reminder_row_"] [data-testid="stHorizontalBlock"] {
-    display:grid !important; grid-template-columns:minmax(0,1fr) 76px 46px !important;
+    display:grid !important; grid-template-columns:minmax(0,1fr) 64px 54px !important;
     gap:.4rem !important; align-items:center !important;
   }
   [class*="st-key-reminder_row_"] [data-testid="column"] {
     width:100% !important; min-width:0 !important; flex:none !important;
+  }
+  [class*="st-key-reminder_delete_"] [data-testid="stButton"] button {
+    width:2.2rem !important; min-width:2.2rem !important; max-width:2.2rem !important;
+    height:2.2rem !important; min-height:2.2rem !important;
+    padding:0 !important; margin:0 auto !important; font-size:.7rem !important;
+    line-height:1 !important;
+  }
+  [class*="st-key-reminder_delete_"] [data-testid="stButton"] button p {
+    margin:0 !important; line-height:1 !important; font-size:.7rem !important;
   }
 }
 </style>
