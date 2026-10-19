@@ -35,6 +35,7 @@ ASSIGNEE_COLORS = {
 }
 PRIORITIES = ("Alta", "Media", "Baja")
 PRIORITY_RANK = {"Alta": 1, "Media": 2, "Baja": 3}
+RECURRENCE_PATTERNS = ("Diaria", "Semanal", "Mensual")
 REMINDER_SENTINEL = "__WORKSYNC_REMINDER__"
 
 
@@ -53,10 +54,13 @@ def task_assignees(task: dict) -> list[str]:
 
 
 def create_task(title: str, description: str, assignee: str | Iterable[str],
-                priority: str, due_date: date) -> None:
+                priority: str, due_date: date, is_recurring: bool = False,
+                recurrence_pattern: str | None = None) -> None:
     chosen_assignees = ([assignee] if isinstance(assignee, str) else list(assignee))
     if not chosen_assignees or any(name not in ASSIGNEES for name in chosen_assignees) or priority not in PRIORITIES:
         raise ValueError("Asignado o prioridad no validos")
+    if is_recurring and recurrence_pattern not in RECURRENCE_PATTERNS:
+        raise ValueError("Frecuencia de recurrencia no valida")
     get_supabase().table(TASKS_TABLE).insert({
         "title": title.strip(),
         "description": description.strip(),
@@ -64,12 +68,17 @@ def create_task(title: str, description: str, assignee: str | Iterable[str],
         "assigned_to": ", ".join(dict.fromkeys(chosen_assignees)),
         "priority": priority,
         "due_date": due_date.isoformat(),
+        "is_recurring": bool(is_recurring),
+        "recurrence_pattern": recurrence_pattern if is_recurring else None,
     }).execute()
 
 
 def list_tasks(assignees: Iterable[str] | None = None, priorities: Iterable[str] | None = None,
-               statuses: Iterable[str] | None = None) -> list[dict]:
+               statuses: Iterable[str] | None = None,
+               is_recurring: bool | None = None) -> list[dict]:
     query = get_supabase().table(TASKS_TABLE).select("*").neq("title", REMINDER_SENTINEL)
+    if is_recurring is not None:
+        query = query.eq("is_recurring", is_recurring)
     for field, values in (("priority", priorities),):
         chosen = list(values or [])
         if chosen:

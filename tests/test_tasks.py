@@ -63,6 +63,27 @@ class TaskModuleTests(unittest.TestCase):
         )
         row = tasks.list_tasks(assignees=["Karen"])[0]
         self.assertEqual(tasks.task_assignees(row), ["Danna", "Karen"])
+
+    def test_recurring_tasks_are_kept_in_their_own_list(self):
+        tasks.create_task("Normal", "", "Danna", "Media", date(2026, 10, 14))
+        tasks.create_task(
+            "Cierre semanal", "", "Karen", "Alta", date(2026, 10, 16),
+            is_recurring=True, recurrence_pattern="Semanal",
+        )
+
+        self.assertEqual(
+            [row["title"] for row in tasks.list_tasks(is_recurring=False)], ["Normal"]
+        )
+        recurring = tasks.list_tasks(is_recurring=True)
+        self.assertEqual([row["title"] for row in recurring], ["Cierre semanal"])
+        self.assertEqual(recurring[0]["recurrence_pattern"], "Semanal")
+
+    def test_recurring_task_requires_a_valid_frequency(self):
+        with self.assertRaises(ValueError):
+            tasks.create_task(
+                "Inválida", "", "Nia", "Baja", date(2026, 10, 14),
+                is_recurring=True,
+            )
 class FakeResponse:
     def __init__(self, data):
         self.data = data

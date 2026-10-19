@@ -23,6 +23,22 @@ add column if not exists assignee text;
 alter table public.worksync_tasks
 add column if not exists completed boolean not null default false;
 
+alter table public.worksync_tasks
+add column if not exists is_recurring boolean not null default false;
+
+alter table public.worksync_tasks
+add column if not exists recurrence_pattern text;
+
+alter table public.worksync_tasks
+drop constraint if exists worksync_tasks_recurrence_pattern_check;
+
+alter table public.worksync_tasks
+add constraint worksync_tasks_recurrence_pattern_check
+check (
+  (is_recurring = false and recurrence_pattern is null)
+  or (is_recurring = true and recurrence_pattern in ('Diaria', 'Semanal', 'Mensual'))
+);
+
 update public.worksync_tasks
 set assignee = coalesce(nullif(assignee, ''), nullif(assigned_to, ''), 'Danna')
 where assignee is null or assignee = '';
@@ -56,6 +72,9 @@ check (priority in ('Alta', 'Media', 'Baja'));
 
 create index if not exists worksync_tasks_priority_due_date_idx
 on public.worksync_tasks (priority, due_date);
+
+create index if not exists worksync_tasks_recurring_due_date_idx
+on public.worksync_tasks (is_recurring, due_date);
 
 grant usage on schema public to service_role;
 grant all privileges on table public.worksync_tasks to service_role;

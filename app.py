@@ -50,6 +50,7 @@ from tasks import (
     ASSIGNEES,
     ASSIGNEE_COLORS,
     PRIORITIES,
+    RECURRENCE_PATTERNS,
     build_pdf,
     create_task,
     delete_task,
@@ -828,6 +829,7 @@ def show_task_detail(task: dict):
     """Show the complete task information without expanding the table row."""
     due_date = date.fromisoformat(task["due_date"]).strftime("%d/%m/%Y")
     status = "Completada" if task["completed"] else "Pendiente"
+    recurrence = task.get("recurrence_pattern") if task.get("is_recurring") else "No recurrente"
     st.markdown(f"### {html.escape(task['title'])}")
     st.markdown(
         '<div class="task-detail-grid">'
@@ -835,6 +837,7 @@ def show_task_detail(task: dict):
         f'<div class="task-detail-item"><div class="task-detail-label">Fecha</div><div class="task-detail-value">{due_date}</div></div>'
         f'<div class="task-detail-item"><div class="task-detail-label">Prioridad</div><div class="task-detail-value">{html.escape(task["priority"])}</div></div>'
         f'<div class="task-detail-item"><div class="task-detail-label">Estado</div><div class="task-detail-value">{status}</div></div>'
+        f'<div class="task-detail-item"><div class="task-detail-label">Recurrencia</div><div class="task-detail-value">{html.escape(recurrence)}</div></div>'
         '</div>',
         unsafe_allow_html=True,
     )
@@ -1035,6 +1038,15 @@ def render_tasks_module():
     st.markdown("### Tablero de tareas")
     st.caption("Crea, prioriza y da seguimiento al trabajo del equipo desde un solo lugar.")
 
+    task_view = st.segmented_control(
+        "Tipo de tareas",
+        options=["Tareas normales", "Tareas recurrentes"],
+        default="Tareas normales",
+        key="task_list_type",
+        label_visibility="collapsed",
+    )
+    showing_recurring = task_view == "Tareas recurrentes"
+
     with st.expander("＋ Crear nueva tarea", expanded=False):
         with st.form("new_task_form", clear_on_submit=True):
             title = st.text_input("Tarea *", placeholder="Ej. Confirmar orden con el cliente")
@@ -1051,6 +1063,18 @@ def render_tasks_module():
                 priority = st.selectbox("Prioridad *", PRIORITIES, index=1)
             with form_col3:
                 due_date = st.date_input("Fecha *", value=date.today())
+            recurring_col, frequency_col = st.columns(2)
+            with recurring_col:
+                is_recurring = st.checkbox(
+                    "Esta tarea es recurrente",
+                    help="La tarea aparecerá en la tabla de tareas recurrentes.",
+                )
+            with frequency_col:
+                recurrence_pattern = st.selectbox(
+                    "Frecuencia",
+                    RECURRENCE_PATTERNS,
+                    help="Se utiliza únicamente si marcas la tarea como recurrente.",
+                )
             submitted = st.form_submit_button(
                 "Crear tarea", type="primary", use_container_width=True
             )
@@ -1058,7 +1082,10 @@ def render_tasks_module():
                 if not title.strip() or not assignee:
                     st.error("Escribe el nombre y selecciona al menos una persona.")
                 else:
-                    create_task(title, description, assignee, priority, due_date)
+                    create_task(
+                        title, description, assignee, priority, due_date,
+                        is_recurring, recurrence_pattern if is_recurring else None,
+                    )
                     st.success("Tarea creada correctamente.")
                     st.rerun()
 
@@ -1077,7 +1104,7 @@ def render_tasks_module():
                 "Estado", ["Pendiente", "Completada"], placeholder="Todos los estados"
             )
 
-    all_tasks = list_tasks()
+    all_tasks = list_tasks(is_recurring=showing_recurring)
     pending_count = sum(not task["completed"] for task in all_tasks)
     completed_count = sum(bool(task["completed"]) for task in all_tasks)
     high_count = sum(not task["completed"] and task["priority"] == "Alta" for task in all_tasks)
@@ -1113,9 +1140,12 @@ def render_tasks_module():
         effective_statuses = ["Completada"]
     elif active_summary == "high":
         effective_priorities, effective_statuses = ["Alta"], ["Pendiente"]
-    tasks = list_tasks(effective_assignees, effective_priorities, effective_statuses)
+    tasks = list_tasks(
+        effective_assignees, effective_priorities, effective_statuses,
+        is_recurring=showing_recurring,
+    )
 
-    st.markdown("#### Tareas")
+    st.markdown(f"#### {task_view}")
     st.caption("Las tareas se ordenan automáticamente: prioridad alta, media y baja.")
     if not tasks:
         st.info("No hay tareas que coincidan con los filtros seleccionados.")
@@ -1160,6 +1190,8 @@ def render_tasks_module():
                 badge_label, badge_kind = "Pendiente", "pending"
             next_priority = {"Baja": "Media", "Media": "Alta", "Alta": "Baja"}
             full_description = task["description"] or "Sin descripción"
+            if task.get("is_recurring"):
+                full_description = f'{task.get("recurrence_pattern", "Recurrente")} · {full_description}'
             short_description = (
                 full_description if len(full_description) <= 62
                 else f"{full_description[:59].rstrip()}…"
