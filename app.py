@@ -505,6 +505,20 @@ hr { border: none !important; border-top: 1px solid var(--ws-border) !important;
 [class*="st-key-task_open_"] [data-testid="stButton"] [data-testid="stMarkdownContainer"] {
   width:100% !important; text-align:left !important;
 }
+[class*="st-key-task_open_person_"],
+[class*="st-key-task_open_person_"] > div,
+[class*="st-key-task_open_person_"] [data-testid="stButton"],
+[class*="st-key-task_open_person_"] [data-testid="stButton"] > div,
+[class*="st-key-task_open_person_"] [data-testid="stMarkdownContainer"] {
+  width:100% !important; min-width:0 !important; align-self:stretch !important;
+  text-align:left !important;
+}
+[class*="st-key-task_open_person_"] [data-testid="stButton"] button,
+[class*="st-key-task_open_person_"] [data-testid="stButton"] button > div,
+[class*="st-key-task_open_person_"] [data-testid="stButton"] button p {
+  width:100% !important; min-width:0 !important; margin:0 !important;
+  text-align:left !important; justify-content:flex-start !important;
+}
 .task-badges { display:flex; flex-wrap:wrap; align-items:center; gap:.3rem; }
 .task-detail-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:1rem 1.25rem; margin:.75rem 0 1rem; }
 .task-detail-item { min-width:0; }
@@ -581,6 +595,36 @@ hr { border: none !important; border-top: 1px solid var(--ws-border) !important;
 [class*="st-key-task_badge_medium_"] [data-testid="stButton"] button { color:#C2410C !important; background:#FFEDD5 !important; }
 [class*="st-key-task_badge_pending_"] [data-testid="stButton"] button { color:#475569 !important; background:#E2E8F0 !important; }
 [class*="st-key-task_badge_completed_"] [data-testid="stButton"] button { color:#047857 !important; background:#D1FAE5 !important; opacity:1 !important; }
+[class*="st-key-task_badge_"][class*="_person_"] [data-testid="stButton"],
+[class*="st-key-task_badge_"][class*="_person_"] [data-testid="stButton"] > div {
+  width:100% !important; min-width:0 !important;
+}
+[class*="st-key-task_badge_"][class*="_person_"] [data-testid="stButton"] button {
+  width:100% !important; min-width:0 !important; max-width:100% !important;
+  padding:.12rem .28rem !important; font-size:.68rem !important; overflow:hidden !important;
+}
+[class*="st-key-task_badge_"][class*="_person_"] [data-testid="stButton"] button p {
+  width:100% !important; margin:0 !important; white-space:nowrap !important;
+  word-break:normal !important; overflow-wrap:normal !important; line-height:1 !important;
+}
+.person-board-title { display:flex; align-items:center; justify-content:space-between; gap:.75rem; margin:.05rem 0 .55rem; }
+.person-board-name { font-family:'Sora',sans-serif; font-size:1rem; font-weight:700; }
+.person-board-count { color:#64748B; background:#F1F5F9; border-radius:999px; padding:.16rem .5rem; font-size:.7rem; font-weight:600; }
+[class*="st-key-person_task_card_"] {
+  border:1px solid var(--ws-border); border-radius:var(--r-md); background:var(--ws-white);
+  padding:.75rem .8rem .45rem !important; box-shadow:var(--sh-xs); margin-bottom:.8rem;
+}
+[class*="st-key-person_task_card_"] > [data-testid="stVerticalBlock"] { gap:.28rem !important; }
+[class*="st-key-person_task_row_"] {
+  border-top:1px solid #E8EDF3; padding:.45rem 0 .2rem !important;
+}
+[class*="st-key-person_task_row_"] [data-testid="stVerticalBlock"] { gap:.12rem !important; }
+[class*="st-key-person_task_actions_"] [data-testid="stVerticalBlock"] { gap:.15rem !important; }
+[class*="st-key-person_task_actions_"] [data-testid="stButton"] button {
+  min-height:1.75rem !important; height:1.75rem !important; padding:.08rem .3rem !important;
+}
+.person-task-date { color:#475569; font-size:.72rem; text-align:center; white-space:nowrap; }
+.person-task-empty { color:#94A3B8; font-size:.8rem; padding:.75rem .15rem 1rem; text-align:center; }
 [data-testid="stTabs"] [data-baseweb="tab-list"] { gap:.35rem; border-bottom:1px solid var(--ws-border); }
 [data-testid="stTabs"] button[role="tab"] { font-family:'Rubik',sans-serif; font-weight:600; padding:.75rem 1.1rem; }
 
@@ -660,6 +704,14 @@ hr { border: none !important; border-top: 1px solid var(--ws-border) !important;
   [class*="st-key-task_mobile_actions_"] [data-testid="stButton"] button {
     width:2.35rem !important; min-height:2.2rem !important; height:2.2rem !important;
     padding:.15rem !important; margin:0 auto !important;
+  }
+  [class*="st-key-person_task_card_"] { padding:.65rem .65rem .35rem !important; }
+  [class*="st-key-person_task_row_"] [data-testid="stHorizontalBlock"] {
+    display:grid !important; grid-template-columns:minmax(0,1fr) 88px 68px 42px !important;
+    gap:.35rem !important; align-items:center !important;
+  }
+  [class*="st-key-person_task_row_"] [data-testid="column"] {
+    width:100% !important; min-width:0 !important; flex:none !important;
   }
   [class*="st-key-reminder_row_"] [data-testid="stHorizontalBlock"] {
     display:grid !important; grid-template-columns:minmax(0,1fr) 118px 78px 50px !important;
@@ -983,6 +1035,116 @@ def render_reminders_board():
                         st.rerun()
 
 
+def render_person_task_board(tasks: list[dict]) -> None:
+    """Render filtered tasks in one compact card per assignee."""
+    card_columns = st.columns(2)
+    for index, person in enumerate(ASSIGNEES):
+        person_tasks = [task for task in tasks if person in task_assignees(task)]
+        pending_tasks = sum(not task["completed"] for task in person_tasks)
+        color = ASSIGNEE_COLORS.get(person, "#475569")
+        with card_columns[index % 2]:
+            with st.container(key=f"person_task_card_{person}"):
+                st.markdown(
+                    '<div class="person-board-title">'
+                    f'<span class="person-board-name" style="color:{color}">{html.escape(person)}</span>'
+                    f'<span class="person-board-count">{pending_tasks} pendientes · {len(person_tasks)} total</span>'
+                    '</div>',
+                    unsafe_allow_html=True,
+                )
+                if not person_tasks:
+                    st.markdown(
+                        '<div class="person-task-empty">No hay tareas con los filtros actuales.</div>',
+                        unsafe_allow_html=True,
+                    )
+                    continue
+
+                for task in person_tasks:
+                    done = bool(task["completed"])
+                    if done:
+                        badge_label, badge_kind = "Completada", "completed"
+                    elif task["priority"] == "Alta":
+                        badge_label, badge_kind = "Alta", "high"
+                    elif task["priority"] == "Media":
+                        badge_label, badge_kind = "Medio", "medium"
+                    else:
+                        badge_label, badge_kind = "Pendiente", "pending"
+                    next_priority = {"Baja": "Media", "Media": "Alta", "Alta": "Baja"}
+                    description = task["description"] or "Sin descripción"
+                    if task.get("is_recurring"):
+                        description = f'{task.get("recurrence_pattern", "Recurrente")} · {description}'
+                    short_description = (
+                        description if len(description) <= 48
+                        else f"{description[:45].rstrip()}…"
+                    )
+                    row_ref = f'{person}_{task["id"]}'
+                    with st.container(key=f"person_task_row_{row_ref}"):
+                        task_col, status_col, date_col, actions_col = st.columns(
+                            [3.05, 1.35, .9, .5], vertical_alignment="center"
+                        )
+                        with task_col:
+                            with st.container(key=f"task_open_person_{row_ref}"):
+                                if st.button(
+                                    f'**{task["title"]}**  \n{short_description}',
+                                    key=f"task_person_open_button_{row_ref}",
+                                    help="Ver información completa",
+                                    use_container_width=True,
+                                ):
+                                    show_task_detail(task)
+                        with status_col:
+                            with st.container(key=f"task_badge_{badge_kind}_person_{row_ref}"):
+                                if st.button(
+                                    badge_label,
+                                    key=f"task_person_priority_{row_ref}",
+                                    disabled=done,
+                                    help=("La tarea ya está completada" if done
+                                          else "Cambiar prioridad: pendiente, medio o alta"),
+                                ):
+                                    set_priority(task["id"], next_priority[task["priority"]])
+                                    st.toast("Prioridad actualizada.")
+                                    st.rerun()
+                        date_col.markdown(
+                            f'<div class="person-task-date">{date.fromisoformat(task["due_date"]).strftime("%d/%m/%Y")}</div>',
+                            unsafe_allow_html=True,
+                        )
+                        with actions_col:
+                            with st.container(key=f"person_task_actions_{row_ref}"):
+                                if st.button(
+                                    "↩" if done else "✓",
+                                    key=f"task_person_toggle_{row_ref}",
+                                    help="Reabrir tarea" if done else "Marcar como completada",
+                                    use_container_width=True,
+                                ):
+                                    set_completed(task["id"], not done)
+                                    st.toast("Estado actualizado.")
+                                    st.rerun()
+                                if st.button(
+                                    "🗑", key=f"task_person_delete_{row_ref}",
+                                    help="Eliminar tarea", use_container_width=True,
+                                ):
+                                    st.session_state.confirm_delete_task_ref = row_ref
+                                    st.rerun()
+
+                    if st.session_state.get("confirm_delete_task_ref") == row_ref:
+                        st.warning(f'¿Eliminar definitivamente “{task["title"]}”?')
+                        confirm_col, cancel_col = st.columns(2)
+                        with confirm_col:
+                            if st.button(
+                                "Sí, eliminar", key=f"confirm_person_delete_{row_ref}",
+                                type="primary", use_container_width=True,
+                            ):
+                                delete_task(task["id"])
+                                st.session_state.pop("confirm_delete_task_ref", None)
+                                st.toast("Tarea eliminada.")
+                                st.rerun()
+                        with cancel_col:
+                            if st.button(
+                                "Cancelar", key=f"cancel_person_delete_{row_ref}",
+                                use_container_width=True,
+                            ):
+                                st.session_state.pop("confirm_delete_task_ref", None)
+                                st.rerun()
+
+
 def render_tasks_module():
     """UI del tablero compartido de tareas y sus reportes."""
     init_db()
@@ -1135,9 +1297,21 @@ def render_tasks_module():
         effective_assignees, effective_priorities, effective_statuses,
     )
 
-    st.markdown("#### Tareas")
+    list_heading_col, view_control_col = st.columns([3, 2], vertical_alignment="center")
+    with list_heading_col:
+        st.markdown("#### Tareas")
+    with view_control_col:
+        task_layout = st.segmented_control(
+            "Vista de tareas",
+            options=["Por persona", "Lista general"],
+            default="Por persona",
+            key="task_layout",
+            label_visibility="collapsed",
+        )
     st.caption("Las tareas se ordenan automáticamente: prioridad alta, media y baja.")
-    if not tasks:
+    if task_layout == "Por persona":
+        render_person_task_board(tasks)
+    elif not tasks:
         st.info("No hay tareas que coincidan con los filtros seleccionados.")
     else:
         page_size = 10
