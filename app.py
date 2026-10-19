@@ -1038,15 +1038,6 @@ def render_tasks_module():
     st.markdown("### Tablero de tareas")
     st.caption("Crea, prioriza y da seguimiento al trabajo del equipo desde un solo lugar.")
 
-    task_view = st.segmented_control(
-        "Tipo de tareas",
-        options=["Tareas normales", "Tareas recurrentes"],
-        default="Tareas normales",
-        key="task_list_type",
-        label_visibility="collapsed",
-    )
-    showing_recurring = task_view == "Tareas recurrentes"
-
     with st.expander("＋ Crear nueva tarea", expanded=False):
         with st.form("new_task_form", clear_on_submit=True):
             title = st.text_input("Tarea *", placeholder="Ej. Confirmar orden con el cliente")
@@ -1067,7 +1058,7 @@ def render_tasks_module():
             with recurring_col:
                 is_recurring = st.checkbox(
                     "Esta tarea es recurrente",
-                    help="La tarea aparecerá en la tabla de tareas recurrentes.",
+                    help="La frecuencia se mostrará junto a la tarea en la tabla.",
                 )
             with frequency_col:
                 recurrence_pattern = st.selectbox(
@@ -1104,7 +1095,7 @@ def render_tasks_module():
                 "Estado", ["Pendiente", "Completada"], placeholder="Todos los estados"
             )
 
-    all_tasks = list_tasks(is_recurring=showing_recurring)
+    all_tasks = list_tasks()
     pending_count = sum(not task["completed"] for task in all_tasks)
     completed_count = sum(bool(task["completed"]) for task in all_tasks)
     high_count = sum(not task["completed"] and task["priority"] == "Alta" for task in all_tasks)
@@ -1142,10 +1133,9 @@ def render_tasks_module():
         effective_priorities, effective_statuses = ["Alta"], ["Pendiente"]
     tasks = list_tasks(
         effective_assignees, effective_priorities, effective_statuses,
-        is_recurring=showing_recurring,
     )
 
-    st.markdown(f"#### {task_view}")
+    st.markdown("#### Tareas")
     st.caption("Las tareas se ordenan automáticamente: prioridad alta, media y baja.")
     if not tasks:
         st.info("No hay tareas que coincidan con los filtros seleccionados.")
