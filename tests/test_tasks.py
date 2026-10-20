@@ -81,6 +81,30 @@ class TaskModuleTests(unittest.TestCase):
         self.assertTrue(edited["is_recurring"])
         self.assertEqual(edited["recurrence_pattern"], "Semanal")
 
+    def test_shared_task_completes_each_assignee_independently(self):
+        tasks.create_task(
+            "Trabajo compartido", "", ["Danna", "Karen"], "Media",
+            date(2026, 10, 20),
+        )
+        task_id = tasks.list_tasks()[0]["id"]
+
+        tasks.set_assignee_completed(task_id, "Danna", True)
+        partly_done = tasks.list_tasks()[0]
+
+        self.assertTrue(tasks.task_assignee_completed(partly_done, "Danna"))
+        self.assertFalse(tasks.task_assignee_completed(partly_done, "Karen"))
+        self.assertFalse(partly_done["completed"])
+        self.assertIsNone(partly_done["completed_at"])
+
+        tasks.set_assignee_completed(task_id, "Karen", True)
+        completed = tasks.list_tasks()[0]
+
+        self.assertTrue(completed["completed"])
+        self.assertIsNotNone(completed["completed_at"])
+        self.assertEqual(
+            set(tasks.task_completion_map(completed)), {"Danna", "Karen"}
+        )
+
     def test_recurring_tasks_are_kept_in_their_own_list(self):
         tasks.create_task("Normal", "", "Danna", "Media", date(2026, 10, 14))
         tasks.create_task(

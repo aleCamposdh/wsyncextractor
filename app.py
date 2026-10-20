@@ -54,13 +54,17 @@ from tasks import (
     build_pdf,
     create_task,
     delete_task,
+    format_task_datetime,
     init_db,
     list_tasks,
     report_tasks,
     remove_task_attachment,
     set_priority,
     set_completed,
+    set_assignee_completed,
     task_attachment_url,
+    task_assignee_completed,
+    task_completion_map,
     update_task,
     upload_task_attachment,
 )
@@ -957,16 +961,32 @@ def show_task_detail(task: dict):
     due_date = date.fromisoformat(task["due_date"]).strftime("%d/%m/%Y")
     status = "Completada" if task["completed"] else "Pendiente"
     recurrence = task.get("recurrence_pattern") if task.get("is_recurring") else "No recurrente"
+    assigned_at = format_task_datetime(task.get("created_at"))
+    completed_at = format_task_datetime(task.get("completed_at"))
+    completions = task_completion_map(task)
     st.markdown(f"### {html.escape(task['title'])}")
     st.markdown(
         '<div class="task-detail-grid">'
         f'<div class="task-detail-item"><div class="task-detail-label">Asignada a</div><div class="task-detail-value">{html.escape(", ".join(task_assignees(task)))}</div></div>'
-        f'<div class="task-detail-item"><div class="task-detail-label">Fecha</div><div class="task-detail-value">{due_date}</div></div>'
+        f'<div class="task-detail-item"><div class="task-detail-label">Fecha límite</div><div class="task-detail-value">{due_date}</div></div>'
         f'<div class="task-detail-item"><div class="task-detail-label">Prioridad</div><div class="task-detail-value">{html.escape(task["priority"])}</div></div>'
         f'<div class="task-detail-item"><div class="task-detail-label">Estado</div><div class="task-detail-value">{status}</div></div>'
         f'<div class="task-detail-item"><div class="task-detail-label">Recurrencia</div><div class="task-detail-value">{html.escape(recurrence)}</div></div>'
+        f'<div class="task-detail-item"><div class="task-detail-label">Creada / asignada</div><div class="task-detail-value">{assigned_at}</div></div>'
+        f'<div class="task-detail-item"><div class="task-detail-label">Completada</div><div class="task-detail-value">{completed_at}</div></div>'
         '</div>',
         unsafe_allow_html=True,
+    )
+    st.markdown("**Progreso por persona**")
+    progress_rows = "".join(
+        '<div class="task-detail-item">'
+        f'<div class="task-detail-label">{html.escape(person)}</div>'
+        f'<div class="task-detail-value">{html.escape(format_task_datetime(completions.get(person)) if person in completions else "Pendiente")}</div>'
+        '</div>'
+        for person in task_assignees(task)
+    )
+    st.markdown(
+        f'<div class="task-detail-grid">{progress_rows}</div>', unsafe_allow_html=True
     )
     st.markdown("**Descripción**")
     st.info(task["description"] or "Sin descripción")
@@ -1128,7 +1148,9 @@ def render_person_task_board(tasks: list[dict]) -> None:
     card_columns = st.columns(2)
     for index, person in enumerate(ASSIGNEES):
         person_tasks = [task for task in tasks if person in task_assignees(task)]
-        pending_tasks = sum(not task["completed"] for task in person_tasks)
+        pending_tasks = sum(
+            not task_assignee_completed(task, person) for task in person_tasks
+        )
         color = ASSIGNEE_COLORS.get(person, "#475569")
         with card_columns[index % 2]:
             with st.container(key=f"person_task_card_{person}"):
@@ -1147,7 +1169,7 @@ def render_person_task_board(tasks: list[dict]) -> None:
                     continue
 
                 for task in person_tasks:
-                    done = bool(task["completed"])
+                    done = task_assignee_completed(task, person)
                     if done:
                         badge_label, badge_kind = "Completada", "completed"
                     elif task["priority"] == "Alta":
@@ -1199,10 +1221,11 @@ def render_person_task_board(tasks: list[dict]) -> None:
                                 if st.button(
                                     "↩" if done else "✓",
                                     key=f"task_person_toggle_{row_ref}",
-                                    help="Reabrir tarea" if done else "Marcar como completada",
+                                    help=("Reabrir mi parte" if done
+                                          else f"Marcar la parte de {person} como completada"),
                                     use_container_width=True,
                                 ):
-                                    set_completed(task["id"], not done)
+                                    set_assignee_completed(task["id"], person, not done)
                                     st.toast("Estado actualizado.")
                                     st.rerun()
                                 if st.button(
@@ -1445,6 +1468,7 @@ def render_tasks_module():
 
         for task in visible_tasks:
             assigned_names = task_assignees(task)
+            shared_task = len(assigned_names) > 1
             person_badges = "".join(
                 f'<span class="person-pill person-{html.escape(name)}" '
                 f'style="color:{ASSIGNEE_COLORS.get(name, "#475569")};'
@@ -1515,7 +1539,10 @@ def render_tasks_module():
                         if st.button(
                             "↩" if done else "✓",
                             key=f'task_desktop_toggle_{task["id"]}',
-                            help="Reabrir tarea" if done else "Marcar como completada",
+                            help=("Usa la vista por persona para completar cada parte"
+                                  if shared_task else
+                                  ("Reabrir tarea" if done else "Marcar como completada")),
+                            disabled=shared_task,
                             use_container_width=True,
                         ):
                             set_completed(task["id"], not done)
@@ -1563,7 +1590,10 @@ def render_tasks_module():
                         if st.button(
                             "↩" if done else "✓",
                             key=f'task_mobile_toggle_{task["id"]}',
-                            help="Reabrir tarea" if done else "Marcar como completada",
+                            help=("Usa la vista por persona para completar cada parte"
+                                  if shared_task else
+                                  ("Reabrir tarea" if done else "Marcar como completada")),
+                            disabled=shared_task,
                             use_container_width=True,
                         ):
                             set_completed(task["id"], not done)

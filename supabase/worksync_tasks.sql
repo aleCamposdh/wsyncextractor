@@ -39,6 +39,24 @@ alter table public.worksync_tasks
 add column if not exists attachment_type text;
 
 alter table public.worksync_tasks
+add column if not exists assignee_completions jsonb not null default '{}'::jsonb;
+
+-- Preserve the completion history of tasks created before per-person tracking.
+update public.worksync_tasks task
+set assignee_completions = coalesce((
+  select jsonb_object_agg(person, coalesce(task.completed_at, task.updated_at, task.created_at))
+  from unnest(
+    case
+      when nullif(trim(task.assigned_to), '') is not null
+        then regexp_split_to_array(task.assigned_to, '\s*,\s*')
+      else array[task.assignee]
+    end
+  ) as person
+), '{}'::jsonb)
+where task.completed = true
+  and task.assignee_completions = '{}'::jsonb;
+
+alter table public.worksync_tasks
 drop constraint if exists worksync_tasks_recurrence_pattern_check;
 
 alter table public.worksync_tasks
