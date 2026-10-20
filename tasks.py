@@ -8,22 +8,6 @@ from pathlib import Path
 from typing import Iterable
 from uuid import uuid4
 
-from reportlab.graphics.charts.barcharts import VerticalBarChart
-from reportlab.graphics.shapes import Drawing
-from reportlab.lib import colors
-from reportlab.lib.enums import TA_CENTER, TA_LEFT
-from reportlab.lib.pagesizes import letter, landscape
-from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
-from reportlab.lib.units import inch
-from reportlab.platypus import (
-    PageBreak,
-    Paragraph,
-    SimpleDocTemplate,
-    Spacer,
-    Table,
-    TableStyle,
-)
-
 from database import get_supabase
 
 
@@ -236,6 +220,24 @@ def report_tasks(start: date, end: date, status: str,
 
 def build_pdf(tasks: list[dict], start: date, end: date, status: str,
               assignees: Iterable[str] | None = None) -> bytes:
+    # PDF support is loaded only when a report is requested.  Keeping this
+    # optional dependency out of the module import path prevents an issue in
+    # ReportLab from taking down the tasks UI (and therefore the entire app).
+    from reportlab.graphics.charts.barcharts import VerticalBarChart
+    from reportlab.graphics.shapes import Drawing
+    from reportlab.lib import colors
+    from reportlab.lib.enums import TA_CENTER, TA_LEFT
+    from reportlab.lib.pagesizes import letter, landscape
+    from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
+    from reportlab.lib.units import inch
+    from reportlab.platypus import (
+        Paragraph,
+        SimpleDocTemplate,
+        Spacer,
+        Table,
+        TableStyle,
+    )
+
     buffer = BytesIO()
     document = SimpleDocTemplate(
         buffer,
