@@ -4,7 +4,9 @@ from __future__ import annotations
 import html
 from datetime import date, datetime, timezone
 from io import BytesIO
+from pathlib import Path
 from typing import Iterable
+from uuid import uuid4
 
 from reportlab.graphics.charts.barcharts import VerticalBarChart
 from reportlab.graphics.shapes import Drawing
@@ -26,6 +28,7 @@ from database import get_supabase
 
 
 TASKS_TABLE = "worksync_tasks"
+TASK_ATTACHMENTS_BUCKET = "worksync-task-attachments"
 ASSIGNEES = ("Danna", "Karen", "Nia", "Tatiana")
 ASSIGNEE_COLORS = {
     "Danna": "#DB2777",
@@ -55,13 +58,13 @@ def task_assignees(task: dict) -> list[str]:
 
 def create_task(title: str, description: str, assignee: str | Iterable[str],
                 priority: str, due_date: date, is_recurring: bool = False,
-                recurrence_pattern: str | None = None) -> None:
+                recurrence_pattern: str | None = None) -> str:
     chosen_assignees = ([assignee] if isinstance(assignee, str) else list(assignee))
     if not chosen_assignees or any(name not in ASSIGNEES for name in chosen_assignees) or priority not in PRIORITIES:
         raise ValueError("Asignado o prioridad no validos")
     if is_recurring and recurrence_pattern not in RECURRENCE_PATTERNS:
         raise ValueError("Frecuencia de recurrencia no valida")
-    get_supabase().table(TASKS_TABLE).insert({
+    response = get_supabase().table(TASKS_TABLE).insert({
         "title": title.strip(),
         "description": description.strip(),
         "assignee": chosen_assignees[0],
@@ -71,6 +74,82 @@ def create_task(title: str, description: str, assignee: str | Iterable[str],
         "is_recurring": bool(is_recurring),
         "recurrence_pattern": recurrence_pattern if is_recurring else None,
     }).execute()
+    return response.data[0]["id"]
+
+
+def update_task(task_id: str, title: str, description: str,
+                assignee: str | Iterable[str], priority: str, due_date: date,
+                is_recurring: bool = False,
+                recurrence_pattern: str | None = None) -> None:
+    chosen_assignees = ([assignee] if isinstance(assignee, str) else list(assignee))
+    if not title.strip() or not chosen_assignees:
+        raise ValueError("Escribe el nombre y selecciona al menos una persona")
+    if any(name not in ASSIGNEES for name in chosen_assignees) or priority not in PRIORITIES:
+        raise ValueError("Asignado o prioridad no validos")
+    if is_recurring and recurrence_pattern not in RECURRENCE_PATTERNS:
+        raise ValueError("Frecuencia de recurrencia no valida")
+    get_supabase().table(TASKS_TABLE).update({
+        "title": title.strip(),
+        "description": description.strip(),
+        "assignee": chosen_assignees[0],
+        "assigned_to": ", ".join(dict.fromkeys(chosen_assignees)),
+        "priority": priority,
+        "due_date": due_date.isoformat(),
+        "is_recurring": bool(is_recurring),
+        "recurrence_pattern": recurrence_pattern if is_recurring else None,
+        "updated_at": datetime.now(timezone.utc).isoformat(),
+    }).eq("id", task_id).execute()
+
+
+def upload_task_attachment(task_id: str, filename: str, content_type: str,
+                           content: bytes, previous_path: str | None = None) -> None:
+    allowed_types = {"image/jpeg": ".jpg", "image/png": ".png", "image/webp": ".webp"}
+    if content_type not in allowed_types:
+        raise ValueError("La foto debe ser JPG, PNG o WebP")
+    if len(content) > 8 * 1024 * 1024:
+        raise ValueError("La foto no puede superar 8 MB")
+    extension = Path(filename).suffix.lower() or allowed_types[content_type]
+    if extension not in {".jpg", ".jpeg", ".png", ".webp"}:
+        extension = allowed_types[content_type]
+    path = f"{task_id}/{uuid4().hex}{extension}"
+    storage = get_supabase().storage.from_(TASK_ATTACHMENTS_BUCKET)
+    storage.upload(path, content, {"content-type": content_type, "upsert": "false"})
+    try:
+        get_supabase().table(TASKS_TABLE).update({
+            "attachment_path": path,
+            "attachment_name": filename,
+            "attachment_type": content_type,
+            "updated_at": datetime.now(timezone.utc).isoformat(),
+        }).eq("id", task_id).execute()
+    except Exception:
+        storage.remove([path])
+        raise
+    if previous_path and previous_path != path:
+        storage.remove([previous_path])
+
+
+def remove_task_attachment(task_id: str, attachment_path: str | None) -> None:
+    if attachment_path:
+        get_supabase().storage.from_(TASK_ATTACHMENTS_BUCKET).remove([attachment_path])
+    get_supabase().table(TASKS_TABLE).update({
+        "attachment_path": None,
+        "attachment_name": None,
+        "attachment_type": None,
+        "updated_at": datetime.now(timezone.utc).isoformat(),
+    }).eq("id", task_id).execute()
+
+
+def task_attachment_url(task: dict, expires_in: int = 3600) -> str | None:
+    path = task.get("attachment_path")
+    if not path:
+        return None
+    response = (
+        get_supabase().storage.from_(TASK_ATTACHMENTS_BUCKET)
+        .create_signed_url(path, expires_in)
+    )
+    if isinstance(response, dict):
+        return response.get("signedURL") or response.get("signedUrl")
+    return getattr(response, "signedURL", None) or getattr(response, "signedUrl", None)
 
 
 def list_tasks(assignees: Iterable[str] | None = None, priorities: Iterable[str] | None = None,
@@ -120,6 +199,14 @@ def set_priority(task_id: str, priority: str) -> None:
 
 
 def delete_task(task_id: str) -> None:
+    response = (
+        get_supabase().table(TASKS_TABLE)
+        .select("*").eq("id", task_id).execute()
+    )
+    if response.data and response.data[0].get("attachment_path"):
+        get_supabase().storage.from_(TASK_ATTACHMENTS_BUCKET).remove(
+            [response.data[0]["attachment_path"]]
+        )
     get_supabase().table(TASKS_TABLE).delete().eq("id", task_id).execute()
 
 

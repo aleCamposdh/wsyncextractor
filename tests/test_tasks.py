@@ -64,6 +64,23 @@ class TaskModuleTests(unittest.TestCase):
         row = tasks.list_tasks(assignees=["Karen"])[0]
         self.assertEqual(tasks.task_assignees(row), ["Danna", "Karen"])
 
+    def test_task_can_be_edited_and_changed_to_recurring(self):
+        tasks.create_task("Original", "", "Danna", "Baja", date(2026, 10, 14))
+        task_id = tasks.list_tasks()[0]["id"]
+
+        tasks.update_task(
+            task_id, "Actualizada", "Nueva descripción", ["Karen", "Nia"],
+            "Alta", date(2026, 10, 20), True, "Semanal",
+        )
+
+        edited = tasks.list_tasks()[0]
+        self.assertEqual(edited["title"], "Actualizada")
+        self.assertEqual(tasks.task_assignees(edited), ["Karen", "Nia"])
+        self.assertEqual(edited["priority"], "Alta")
+        self.assertEqual(edited["due_date"], "2026-10-20")
+        self.assertTrue(edited["is_recurring"])
+        self.assertEqual(edited["recurrence_pattern"], "Semanal")
+
     def test_recurring_tasks_are_kept_in_their_own_list(self):
         tasks.create_task("Normal", "", "Danna", "Media", date(2026, 10, 14))
         tasks.create_task(

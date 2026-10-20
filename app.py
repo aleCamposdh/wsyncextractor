@@ -57,8 +57,12 @@ from tasks import (
     init_db,
     list_tasks,
     report_tasks,
+    remove_task_attachment,
     set_priority,
     set_completed,
+    task_attachment_url,
+    update_task,
+    upload_task_attachment,
 )
 from reminders import (
     acknowledge_reminders,
@@ -879,6 +883,77 @@ with st.sidebar:
 @st.dialog("Detalle de la tarea", width="small")
 def show_task_detail(task: dict):
     """Show the complete task information without expanding the table row."""
+    edit_key = f'task_edit_mode_{task["id"]}'
+    if st.session_state.get(edit_key):
+        st.markdown("### Editar tarea")
+        with st.form(f'edit_task_form_{task["id"]}'):
+            title = st.text_input("Tarea *", value=task["title"])
+            description = st.text_area(
+                "Descripción", value=task.get("description") or "", height=90
+            )
+            assignees = st.multiselect(
+                "Asignar a *", ASSIGNEES, default=task_assignees(task)
+            )
+            priority = st.selectbox(
+                "Prioridad *", PRIORITIES, index=PRIORITIES.index(task["priority"])
+            )
+            due_date = st.date_input("Fecha *", value=date.fromisoformat(task["due_date"]))
+            is_recurring = st.checkbox(
+                "Esta tarea es recurrente", value=bool(task.get("is_recurring"))
+            )
+            current_pattern = task.get("recurrence_pattern")
+            pattern_index = (
+                RECURRENCE_PATTERNS.index(current_pattern)
+                if current_pattern in RECURRENCE_PATTERNS else 0
+            )
+            recurrence_pattern = st.selectbox(
+                "Frecuencia", RECURRENCE_PATTERNS, index=pattern_index,
+                help="Se utiliza únicamente si la tarea es recurrente.",
+            )
+            photo = st.file_uploader(
+                "Foto opcional",
+                type=["jpg", "jpeg", "png", "webp"],
+                help="JPG, PNG o WebP. Tamaño máximo: 8 MB.",
+            )
+            remove_photo = False
+            if task.get("attachment_path"):
+                st.caption(f'Foto actual: {task.get("attachment_name") or "Archivo adjunto"}')
+                remove_photo = st.checkbox("Quitar la foto actual")
+            save_col, cancel_col = st.columns(2)
+            with save_col:
+                submitted = st.form_submit_button(
+                    "Guardar cambios", type="primary", use_container_width=True
+                )
+            with cancel_col:
+                cancelled = st.form_submit_button("Cancelar", use_container_width=True)
+
+        if cancelled:
+            st.session_state.pop(edit_key, None)
+            st.rerun()
+        if submitted:
+            if not title.strip() or not assignees:
+                st.error("Escribe el nombre y selecciona al menos una persona.")
+                return
+            try:
+                update_task(
+                    task["id"], title, description, assignees, priority, due_date,
+                    is_recurring, recurrence_pattern if is_recurring else None,
+                )
+                if photo is not None:
+                    upload_task_attachment(
+                        task["id"], photo.name, photo.type, photo.getvalue(),
+                        task.get("attachment_path"),
+                    )
+                elif remove_photo:
+                    remove_task_attachment(task["id"], task.get("attachment_path"))
+            except Exception as error:
+                st.error(f"No se pudo guardar la tarea: {error}")
+                return
+            st.session_state.pop(edit_key, None)
+            st.toast("Tarea actualizada.")
+            st.rerun()
+        return
+
     due_date = date.fromisoformat(task["due_date"]).strftime("%d/%m/%Y")
     status = "Completada" if task["completed"] else "Pendiente"
     recurrence = task.get("recurrence_pattern") if task.get("is_recurring") else "No recurrente"
@@ -895,6 +970,19 @@ def show_task_detail(task: dict):
     )
     st.markdown("**Descripción**")
     st.info(task["description"] or "Sin descripción")
+    if task.get("attachment_path"):
+        st.markdown("**Foto adjunta**")
+        try:
+            attachment_url = task_attachment_url(task)
+            if attachment_url:
+                st.image(attachment_url, caption=task.get("attachment_name") or "Foto de la tarea")
+        except Exception:
+            st.warning("No se pudo cargar la foto adjunta.")
+    st.button(
+        "Editar tarea", key=f'edit_task_button_{task["id"]}',
+        type="primary", use_container_width=True,
+        on_click=lambda: st.session_state.__setitem__(edit_key, True),
+    )
 
 
 @st.dialog("Recordatorio", width="small")
@@ -1228,6 +1316,12 @@ def render_tasks_module():
                     RECURRENCE_PATTERNS,
                     help="Se utiliza únicamente si marcas la tarea como recurrente.",
                 )
+            photo = st.file_uploader(
+                "Foto opcional",
+                type=["jpg", "jpeg", "png", "webp"],
+                help="JPG, PNG o WebP. Tamaño máximo: 8 MB.",
+                key="new_task_photo",
+            )
             submitted = st.form_submit_button(
                 "Crear tarea", type="primary", use_container_width=True
             )
@@ -1235,12 +1329,26 @@ def render_tasks_module():
                 if not title.strip() or not assignee:
                     st.error("Escribe el nombre y selecciona al menos una persona.")
                 else:
-                    create_task(
-                        title, description, assignee, priority, due_date,
-                        is_recurring, recurrence_pattern if is_recurring else None,
-                    )
-                    st.success("Tarea creada correctamente.")
-                    st.rerun()
+                    task_id = None
+                    try:
+                        task_id = create_task(
+                            title, description, assignee, priority, due_date,
+                            is_recurring, recurrence_pattern if is_recurring else None,
+                        )
+                        if photo is not None:
+                            upload_task_attachment(
+                                task_id, photo.name, photo.type, photo.getvalue()
+                            )
+                    except Exception as error:
+                        if task_id is not None and photo is not None:
+                            try:
+                                delete_task(task_id)
+                            except Exception:
+                                pass
+                        st.error(f"No se pudo crear la tarea: {error}")
+                    else:
+                        st.success("Tarea creada correctamente.")
+                        st.rerun()
 
     with st.expander("Filtros", expanded=False):
         filter_col1, filter_col2, filter_col3 = st.columns(3)

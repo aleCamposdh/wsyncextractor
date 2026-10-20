@@ -30,6 +30,15 @@ alter table public.worksync_tasks
 add column if not exists recurrence_pattern text;
 
 alter table public.worksync_tasks
+add column if not exists attachment_path text;
+
+alter table public.worksync_tasks
+add column if not exists attachment_name text;
+
+alter table public.worksync_tasks
+add column if not exists attachment_type text;
+
+alter table public.worksync_tasks
 drop constraint if exists worksync_tasks_recurrence_pattern_check;
 
 alter table public.worksync_tasks
@@ -78,3 +87,18 @@ on public.worksync_tasks (is_recurring, due_date);
 
 grant usage on schema public to service_role;
 grant all privileges on table public.worksync_tasks to service_role;
+
+-- Private bucket for optional task photos. The application uses the service role
+-- and creates short-lived signed URLs when a user opens a task.
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values (
+  'worksync-task-attachments',
+  'worksync-task-attachments',
+  false,
+  8388608,
+  array['image/jpeg', 'image/png', 'image/webp']
+)
+on conflict (id) do update set
+  public = excluded.public,
+  file_size_limit = excluded.file_size_limit,
+  allowed_mime_types = excluded.allowed_mime_types;
