@@ -2,12 +2,11 @@
 from __future__ import annotations
 
 import html
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from io import BytesIO
 from pathlib import Path
 from typing import Iterable
 from uuid import uuid4
-from zoneinfo import ZoneInfo
 
 from database import get_supabase
 
@@ -25,7 +24,7 @@ PRIORITIES = ("Alta", "Media", "Baja")
 PRIORITY_RANK = {"Alta": 1, "Media": 2, "Baja": 3}
 RECURRENCE_PATTERNS = ("Diaria", "Semanal", "Mensual")
 REMINDER_SENTINEL = "__WORKSYNC_REMINDER__"
-LOCAL_TIMEZONE = ZoneInfo("America/Costa_Rica")
+LOCAL_TIMEZONE = timezone(timedelta(hours=-6), name="America/Costa_Rica")
 
 
 def init_db() -> None:
