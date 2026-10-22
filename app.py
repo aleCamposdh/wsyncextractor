@@ -618,6 +618,10 @@ hr { border: none !important; border-top: 1px solid var(--ws-border) !important;
 .person-board-title { display:flex; align-items:center; justify-content:space-between; gap:.75rem; margin:.05rem 0 .55rem; }
 .person-board-name { font-family:'Sora',sans-serif; font-size:1rem; font-weight:700; }
 .person-board-count { color:#64748B; background:#F1F5F9; border-radius:999px; padding:.16rem .5rem; font-size:.7rem; font-weight:600; }
+[class*="st-key-person_task_visibility_"] [data-testid="stButton"] button {
+  min-height:1.85rem !important; height:1.85rem !important; padding:.15rem .5rem !important;
+  font-size:.68rem !important; white-space:nowrap !important;
+}
 [class*="st-key-person_task_card_"] {
   border:1px solid var(--ws-border); border-radius:var(--r-md); background:var(--ws-white);
   padding:.75rem .8rem .45rem !important; box-shadow:var(--sh-xs); margin-bottom:.8rem;
@@ -639,22 +643,24 @@ hr { border: none !important; border-top: 1px solid var(--ws-border) !important;
 @media (max-width:640px) {
   html, body, .stApp, [data-testid="stMain"] { max-width:100vw !important; overflow-x:hidden !important; }
   [data-testid="stMainBlockContainer"] { width:100% !important; max-width:100% !important; padding:.8rem .7rem 2rem !important; }
-  .task-summary-grid { width:100%; grid-template-columns:repeat(2,minmax(0,1fr)); gap:.45rem; }
+  .task-summary-grid { width:100%; grid-template-columns:repeat(3,minmax(0,1fr)); gap:.4rem; }
   .task-summary { padding:.6rem .7rem; min-height:4rem; }
   .task-summary .label { font-size:.61rem; letter-spacing:.025em; }
   .task-summary .value { font-size:1.2rem; margin-top:.08rem; }
   [data-testid="stHorizontalBlock"]:has([class*="st-key-task_summary_"]) {
-    display:grid !important; grid-template-columns:repeat(2,minmax(0,1fr)) !important;
-    gap:.55rem !important; width:100% !important;
+    display:grid !important; grid-template-columns:repeat(3,minmax(0,1fr)) !important;
+    gap:.4rem !important; width:100% !important;
   }
   [data-testid="stHorizontalBlock"]:has([class*="st-key-task_summary_"]) > [data-testid="column"] {
     width:100% !important; min-width:0 !important; flex:none !important;
   }
   [class*="st-key-task_summary_"] [data-testid="stButton"] button {
-    min-height:4.7rem !important; padding:.55rem .7rem !important;
+    min-height:4.1rem !important; padding:.4rem .45rem !important;
   }
-  [class*="st-key-task_summary_"] [data-testid="stButton"] button p { font-size:.62rem !important; }
-  [class*="st-key-task_summary_"] [data-testid="stButton"] button strong { font-size:1.3rem !important; }
+  [class*="st-key-task_summary_"] [data-testid="stButton"] button p {
+    font-size:.55rem !important; letter-spacing:.015em !important; line-height:1.45 !important;
+  }
+  [class*="st-key-task_summary_"] [data-testid="stButton"] button strong { font-size:1.15rem !important; }
   [class*="st-key-task_table_header"] { display:none !important; }
   .task-mobile-header {
     display:grid; grid-template-columns:minmax(0,1fr) 108px 84px 50px;
@@ -1143,7 +1149,12 @@ def render_reminders_board():
                         st.rerun()
 
 
-def render_person_task_board(tasks: list[dict]) -> None:
+def toggle_person_task_history(person: str) -> None:
+    state_key = f"show_completed_tasks_{person}"
+    st.session_state[state_key] = not st.session_state.get(state_key, False)
+
+
+def render_person_task_board(tasks: list[dict], force_completed_visible: bool = False) -> None:
     """Render filtered tasks in one compact card per assignee."""
     card_columns = st.columns(2)
     for index, person in enumerate(ASSIGNEES):
@@ -1151,16 +1162,44 @@ def render_person_task_board(tasks: list[dict]) -> None:
         pending_tasks = sum(
             not task_assignee_completed(task, person) for task in person_tasks
         )
+        show_completed = (
+            force_completed_visible
+            or st.session_state.get(f"show_completed_tasks_{person}", False)
+        )
+        visible_person_tasks = (
+            person_tasks if show_completed else [
+                task for task in person_tasks
+                if not task_assignee_completed(task, person)
+            ]
+        )
         color = ASSIGNEE_COLORS.get(person, "#475569")
         with card_columns[index % 2]:
             with st.container(key=f"person_task_card_{person}"):
-                st.markdown(
+                title_col, visibility_col = st.columns([3.2, 1], vertical_alignment="center")
+                title_col.markdown(
                     '<div class="person-board-title">'
                     f'<span class="person-board-name" style="color:{color}">{html.escape(person)}</span>'
                     f'<span class="person-board-count">{pending_tasks} pendientes · {len(person_tasks)} total</span>'
-                    '</div>',
-                    unsafe_allow_html=True,
+                    '</div>', unsafe_allow_html=True,
                 )
+                with visibility_col:
+                    with st.container(key=f"person_task_visibility_{person}"):
+                        if force_completed_visible:
+                            st.button(
+                                "Completadas",
+                                key=f"person_task_visibility_button_{person}",
+                                disabled=True,
+                                use_container_width=True,
+                            )
+                        else:
+                            st.button(
+                                "Solo pendientes" if show_completed else "Ver todas",
+                                key=f"person_task_visibility_button_{person}",
+                                disabled=not person_tasks,
+                                use_container_width=True,
+                                on_click=toggle_person_task_history,
+                                args=(person,),
+                            )
                 if not person_tasks:
                     st.markdown(
                         '<div class="person-task-empty">No hay tareas con los filtros actuales.</div>',
@@ -1168,7 +1207,14 @@ def render_person_task_board(tasks: list[dict]) -> None:
                     )
                     continue
 
-                for task in person_tasks:
+                if not visible_person_tasks:
+                    st.markdown(
+                        '<div class="person-task-empty">No hay tareas pendientes.</div>',
+                        unsafe_allow_html=True,
+                    )
+                    continue
+
+                for task in visible_person_tasks:
                     done = task_assignee_completed(task, person)
                     if done:
                         badge_label, badge_kind = "Completada", "completed"
@@ -1392,13 +1438,17 @@ def render_tasks_module():
     pending_count = sum(not task["completed"] for task in all_tasks)
     completed_count = sum(bool(task["completed"]) for task in all_tasks)
     high_count = sum(not task["completed"] and task["priority"] == "Alta" for task in all_tasks)
+    medium_count = sum(not task["completed"] and task["priority"] == "Media" for task in all_tasks)
+    recurring_count = sum(bool(task.get("is_recurring")) for task in all_tasks)
     active_summary = st.session_state.get("task_summary_filter", "total")
-    summary_columns = st.columns(4)
+    summary_columns = st.columns(6)
     summary_options = (
         ("total", "Total", len(all_tasks)),
         ("pending", "Pendientes", pending_count),
         ("completed", "Completadas", completed_count),
         ("high", "Altas pendientes", high_count),
+        ("medium", "Medias pendientes", medium_count),
+        ("recurring", "Recurrentes", recurring_count),
     )
     for column, (filter_name, label, value) in zip(summary_columns, summary_options):
         with column:
@@ -1418,15 +1468,22 @@ def render_tasks_module():
     effective_assignees = assignee_filter
     effective_priorities = priority_filter
     effective_statuses = status_filter
+    effective_recurring = None
     if active_summary == "pending":
         effective_statuses = ["Pendiente"]
     elif active_summary == "completed":
         effective_statuses = ["Completada"]
     elif active_summary == "high":
         effective_priorities, effective_statuses = ["Alta"], ["Pendiente"]
+    elif active_summary == "medium":
+        effective_priorities, effective_statuses = ["Media"], ["Pendiente"]
+    elif active_summary == "recurring":
+        effective_recurring = True
     tasks = list_tasks(
         effective_assignees, effective_priorities, effective_statuses,
+        is_recurring=effective_recurring,
     )
+    completed_filter_active = effective_statuses == ["Completada"]
 
     list_heading_col, view_control_col = st.columns([3, 2], vertical_alignment="center")
     with list_heading_col:
@@ -1441,7 +1498,7 @@ def render_tasks_module():
         )
     st.caption("Las tareas se ordenan automáticamente: prioridad alta, media y baja.")
     if task_layout == "Por persona":
-        render_person_task_board(tasks)
+        render_person_task_board(tasks, force_completed_visible=completed_filter_active)
     elif not tasks:
         st.info("No hay tareas que coincidan con los filtros seleccionados.")
     else:
