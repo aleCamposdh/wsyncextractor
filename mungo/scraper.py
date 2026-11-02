@@ -193,6 +193,34 @@ async def _leer_todas_las_paginas(page) -> pd.DataFrame:
     table = page.locator(ORDER_TABLE_SELECTOR)
     await table.wait_for(state="visible", timeout=60_000)
 
+    # Kova pagina esta grilla principalmente con "Rows on Page"; en algunas
+    # cuentas no renderiza links Page$N. Si existe una opción numérica mayor,
+    # selecciona el máximo antes de leer la tabla.
+    select_info = await page.locator("select").evaluate_all(
+        "els => els.map((el, index) => ({index, id: el.id, name: el.name, value: el.value, "
+        "options: Array.from(el.options).map(o => ({value: o.value, text: o.text.trim()}))}))"
+    )
+    for info in select_info:
+        numeric_options = []
+        for option in info["options"]:
+            import re
+            candidate = (option.get("value") or option.get("text") or "").strip()
+            if candidate.isdigit():
+                numeric_options.append((int(candidate), option.get("value"), option.get("text")))
+        values = {number for number, _, _ in numeric_options}
+        if 100 in values and max(values, default=0) > 100:
+            largest = max(numeric_options, key=lambda item: item[0])
+            logger.warning("Mungo Rows on Page: select=%s opciones=%s", info, numeric_options)
+            selector = page.locator("select").nth(info["index"])
+            try:
+                await selector.select_option(value=largest[1])
+            except Exception:
+                await selector.select_option(label=largest[2])
+            await page.wait_for_timeout(3_000)
+            break
+    else:
+        logger.warning("Mungo Rows on Page: no se encontró selector con opción 100 y mayor")
+
     while True:
         table_html = await table.evaluate("element => element.outerHTML")
         fingerprint = sha1(table_html.encode("utf-8")).hexdigest()
