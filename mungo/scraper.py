@@ -8,7 +8,7 @@ import pandas as pd
 from playwright.async_api import async_playwright
 
 import logger as _log
-from .transformer import filtrar_por_start_date
+from .transformer import filtrar_por_start_date, normalizar_fecha
 
 logger = _log.get("mungo.scraper")
 
@@ -123,10 +123,41 @@ async def _extraer_ordenes_mungo(
                 ).click()
                 await page.wait_for_timeout(5_000)
             result = await _leer_todas_las_paginas(page)
+            diagnostic_detail = {}
+            po_column = next(
+                (column for column in result.columns if str(column).strip().casefold() == "po#"),
+                None,
+            )
+            start_date_column = next(
+                (column for column in result.columns if str(column).strip().casefold() == "start date"),
+                None,
+            )
+            if po_column is not None and start_date_column is not None:
+                target_rows = result.loc[
+                    result[po_column].map(lambda value: str(value).strip().removesuffix(".0")) == "50289142",
+                    [po_column, start_date_column],
+                ]
+                diagnostic_detail["po_50289142"] = [
+                    {
+                        "raw_start_date": str(row[start_date_column]),
+                        "normalized_start_date": normalizar_fecha(row[start_date_column]),
+                    }
+                    for _, row in target_rows.iterrows()
+                ]
+            diagnostic_detail["start_date_examples"] = (
+                [
+                    {
+                        "raw": str(value),
+                        "normalized": normalizar_fecha(value),
+                    }
+                    for value in result[start_date_column].head(5)
+                ]
+                if start_date_column is not None else []
+            )
             logger.warning(
-                "Mungo diagnóstico: filas_leídas=%s columnas=%s filtro=%s desde=%s hasta=%s",
+                "Mungo diagnóstico: filas_leídas=%s columnas=%s filtro=%s desde=%s hasta=%s detalle=%s",
                 len(result), list(result.columns), date_filter,
-                date_from.isoformat(), date_to.isoformat(),
+                date_from.isoformat(), date_to.isoformat(), diagnostic_detail,
             )
             if date_filter == "start_date":
                 filtered = filtrar_por_start_date(result, date_from, date_to)
@@ -136,6 +167,7 @@ async def _extraer_ordenes_mungo(
                     "matching_rows": len(filtered),
                     "date_from": date_from.isoformat(),
                     "date_to": date_to.isoformat(),
+                    **diagnostic_detail,
                 }
                 logger.warning(
                     "Mungo diagnóstico: filas_coincidentes_Start_Date=%s",
