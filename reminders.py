@@ -51,6 +51,49 @@ def create_reminder(description: str, reminder_date: date,
         }).execute()
 
 
+def update_reminder(
+    reminder_id: str,
+    description: str,
+    reminder_date: date,
+    assignees: Iterable[str] | None = None,
+    previous_date: str | None = None,
+) -> None:
+    """Actualiza descripción, fecha y personas asignadas de un recordatorio."""
+    description = description.strip()
+    chosen_assignees = list(dict.fromkeys(assignees or []))
+    if not reminder_id:
+        raise ValueError("No se encontró el recordatorio")
+    if not description:
+        raise ValueError("La descripcion es obligatoria")
+    if not chosen_assignees or any(name not in ASSIGNEES for name in chosen_assignees):
+        raise ValueError("Selecciona al menos una persona valida")
+
+    date_changed = previous_date != reminder_date.isoformat()
+    if _fallback_to_tasks:
+        payload = {
+            "description": description,
+            "due_date": reminder_date.isoformat(),
+            "assignee": chosen_assignees[0],
+            "assigned_to": ", ".join(chosen_assignees),
+        }
+        if date_changed:
+            payload.update({"completed": False, "completed_at": None})
+        get_supabase().table(TASKS_FALLBACK_TABLE).update(payload).eq(
+            "id", reminder_id
+        ).eq("title", REMINDER_SENTINEL).execute()
+    else:
+        payload = {
+            "description": description,
+            "reminder_date": reminder_date.isoformat(),
+            "assignees": chosen_assignees,
+        }
+        if date_changed:
+            payload.update({"acknowledged": False, "acknowledged_at": None})
+        get_supabase().table(REMINDERS_TABLE).update(payload).eq(
+            "id", reminder_id
+        ).execute()
+
+
 def list_reminders() -> list[dict]:
     if _fallback_to_tasks:
         rows = (

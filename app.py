@@ -75,6 +75,7 @@ from reminders import (
     init_reminders_db,
     list_reminders,
     pending_reminders_for,
+    update_reminder,
 )
 
 
@@ -582,6 +583,9 @@ hr { border: none !important; border-top: 1px solid var(--ws-border) !important;
   min-height:1.8rem !important; height:1.8rem !important; padding:.1rem .45rem !important;
   color:#B91C1C !important; background:#FFF7F7 !important; border-color:#FECACA !important;
 }
+[class*="st-key-reminder_edit_"] [data-testid="stButton"] button {
+  min-height:1.8rem !important; height:1.8rem !important; padding:.1rem .25rem !important;
+}
 [class*="st-key-reminder_open_"] [data-testid="stButton"] button {
   width:100% !important; justify-content:flex-start !important; text-align:left !important;
   border:0 !important; background:transparent !important; box-shadow:none !important;
@@ -728,7 +732,7 @@ hr { border: none !important; border-top: 1px solid var(--ws-border) !important;
     width:100% !important; min-width:0 !important; flex:none !important;
   }
   [class*="st-key-reminder_row_"] [data-testid="stHorizontalBlock"] {
-    display:grid !important; grid-template-columns:minmax(0,1fr) 118px 78px 50px !important;
+    display:grid !important; grid-template-columns:minmax(0,1fr) 118px 78px 78px !important;
     gap:.4rem !important; align-items:center !important;
   }
   [class*="st-key-reminder_row_"] [data-testid="column"] {
@@ -745,13 +749,15 @@ hr { border: none !important; border-top: 1px solid var(--ws-border) !important;
   [class*="st-key-reminder_row_"] .reminder-assignees:has(.person-pill:nth-child(3)) {
     transform:translateY(-7px) !important;
   }
-  [class*="st-key-reminder_delete_"] [data-testid="stButton"] button {
+  [class*="st-key-reminder_delete_"] [data-testid="stButton"] button,
+  [class*="st-key-reminder_edit_"] [data-testid="stButton"] button {
     width:2.2rem !important; min-width:2.2rem !important; max-width:2.2rem !important;
     height:2.2rem !important; min-height:2.2rem !important;
     padding:0 !important; margin:0 auto !important; font-size:.7rem !important;
     line-height:1 !important;
   }
-  [class*="st-key-reminder_delete_"] [data-testid="stButton"] button p {
+  [class*="st-key-reminder_delete_"] [data-testid="stButton"] button p,
+  [class*="st-key-reminder_edit_"] [data-testid="stButton"] button p {
     margin:0 !important; line-height:1 !important; font-size:.7rem !important;
   }
 }
@@ -1030,6 +1036,44 @@ def show_reminder_detail(reminder: dict):
     )
 
 
+@st.dialog("Editar recordatorio", width="small")
+def show_reminder_editor(reminder: dict):
+    """Permite actualizar los campos principales de un recordatorio."""
+    with st.form(f'edit_reminder_form_{reminder["id"]}'):
+        description = st.text_area(
+            "Descripción *",
+            value=reminder.get("description", ""),
+            height=110,
+        )
+        reminder_date = st.date_input(
+            "Fecha *",
+            value=date.fromisoformat(reminder["reminder_date"]),
+            key=f'edit_reminder_date_{reminder["id"]}',
+        )
+        assignees = st.multiselect(
+            "Asignar a *",
+            ASSIGNEES,
+            default=[name for name in (reminder.get("assignees") or []) if name in ASSIGNEES],
+            key=f'edit_reminder_assignees_{reminder["id"]}',
+        )
+        submitted = st.form_submit_button(
+            "Guardar cambios", type="primary", use_container_width=True
+        )
+        if submitted:
+            if not description.strip() or not assignees:
+                st.error("Escribe la descripción y selecciona al menos una persona.")
+            else:
+                try:
+                    update_reminder(
+                        reminder["id"], description, reminder_date, assignees,
+                        previous_date=reminder["reminder_date"],
+                    )
+                    st.toast("Recordatorio actualizado.")
+                    st.rerun()
+                except Exception as error:
+                    st.error(f"No se pudo actualizar el recordatorio: {error}")
+
+
 @st.dialog("🔔 Recordatorios de hoy", width="small")
 def show_today_reminder_alerts(alert_reminders: list[dict]):
     st.caption("Selecciona un recordatorio para abrirlo y marcar su alerta como vista.")
@@ -1112,7 +1156,7 @@ def render_reminders_board():
         row_kind = "highlight" if is_highlighted else "normal"
         with st.container(key=f'reminder_row_{row_kind}_{reminder["id"]}'):
             description_col, people_col, date_col, action_col = st.columns(
-                [4.2, 2, 1.15, .55], vertical_alignment="center"
+                [4.2, 2, 1.15, .95], vertical_alignment="center"
             )
             description = reminder["description"]
             short_description = (
@@ -1139,14 +1183,23 @@ def render_reminders_board():
                 unsafe_allow_html=True,
             )
             with action_col:
-                with st.container(key=f'reminder_delete_{reminder["id"]}'):
-                    if st.button(
-                        "🗑", key=f'delete_reminder_{reminder["id"]}',
-                        help="Eliminar recordatorio", use_container_width=True,
-                    ):
-                        delete_reminder(reminder["id"])
-                        st.toast("Recordatorio eliminado.")
-                        st.rerun()
+                edit_col, delete_col = st.columns(2, gap="small")
+                with edit_col:
+                    with st.container(key=f'reminder_edit_{reminder["id"]}'):
+                        if st.button(
+                            "✏️", key=f'edit_reminder_{reminder["id"]}',
+                            help="Editar recordatorio", use_container_width=True,
+                        ):
+                            show_reminder_editor(reminder)
+                with delete_col:
+                    with st.container(key=f'reminder_delete_{reminder["id"]}'):
+                        if st.button(
+                            "🗑", key=f'delete_reminder_{reminder["id"]}',
+                            help="Eliminar recordatorio", use_container_width=True,
+                        ):
+                            delete_reminder(reminder["id"])
+                            st.toast("Recordatorio eliminado.")
+                            st.rerun()
 
 
 def toggle_person_task_history(person: str) -> None:
