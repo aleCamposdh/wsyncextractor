@@ -7,7 +7,10 @@ from io import StringIO
 import pandas as pd
 from playwright.async_api import async_playwright
 
+import logger as _log
 from .transformer import filtrar_por_start_date
+
+logger = _log.get("mungo.scraper")
 
 
 MUNGO_URL = "https://kova1.mungo.com/KovaMungo/desktopdefault.aspx?ReturnUrl=%2fKovaMungo%2f"
@@ -120,18 +123,23 @@ async def _extraer_ordenes_mungo(
                 ).click()
                 await page.wait_for_timeout(5_000)
             result = await _leer_todas_las_paginas(page)
-            print(
-                "Mungo diagnóstico: "
-                f"filas_leídas={len(result)}, "
-                f"columnas={list(result.columns)}, "
-                f"filtro={date_filter}, "
-                f"desde={date_from.isoformat()}, hasta={date_to.isoformat()}"
+            logger.warning(
+                "Mungo diagnóstico: filas_leídas=%s columnas=%s filtro=%s desde=%s hasta=%s",
+                len(result), list(result.columns), date_filter,
+                date_from.isoformat(), date_to.isoformat(),
             )
             if date_filter == "start_date":
                 filtered = filtrar_por_start_date(result, date_from, date_to)
-                print(
-                    "Mungo diagnóstico: "
-                    f"filas_coincidentes_Start_Date={len(filtered)}"
+                filtered.attrs["mungo_diagnostic"] = {
+                    "rows_read": len(result),
+                    "columns": list(result.columns),
+                    "matching_rows": len(filtered),
+                    "date_from": date_from.isoformat(),
+                    "date_to": date_to.isoformat(),
+                }
+                logger.warning(
+                    "Mungo diagnóstico: filas_coincidentes_Start_Date=%s",
+                    len(filtered),
                 )
                 return filtered
             return result
