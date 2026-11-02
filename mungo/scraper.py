@@ -22,7 +22,6 @@ MUNGO_PO_URL = (
 )
 MUNGO_LOGOUT_URL = "https://kova1.mungo.com/KovaMungo/LogOut.aspx"
 ORDER_TABLE_SELECTOR = "#ctl00_GridContentJobPOGridJobPODataGrid_ctl00"
-ORDER_GRID_SELECTOR = "#ctl00_GridContentJobPOGridJobPODataGrid"
 
 DATE_FILTER_SELECTORS = {
     "released": (
@@ -191,7 +190,6 @@ async def _leer_todas_las_paginas(page) -> pd.DataFrame:
     rows: list[pd.DataFrame] = []
     seen_pages: set[str] = set()
     visited_page_numbers = {1}
-    grid = page.locator(ORDER_GRID_SELECTOR)
     table = page.locator(ORDER_TABLE_SELECTOR)
     await table.wait_for(state="visible", timeout=60_000)
 
@@ -214,8 +212,8 @@ async def _leer_todas_las_paginas(page) -> pd.DataFrame:
         # Los grids de WebForms suelen renderizar el paginador como links con
         # href __doPostBack(..., "Page$N"). Buscar el siguiente número evita
         # depender del texto/localización del botón.
-        page_links = await grid.locator(
-            'a[href*="__doPostBack"][href*="Page$"]'
+        page_links = await table.locator(
+            'a[href*="Page$"]'
         ).evaluate_all(
             "els => els.map(el => el.getAttribute('href'))"
         )
@@ -231,12 +229,15 @@ async def _leer_todas_las_paginas(page) -> pd.DataFrame:
             if number > max(visited_page_numbers) and number not in visited_page_numbers
         ]
         if not candidates:
-            break
-
-        target = min(candidates)
-        visited_page_numbers.add(target)
-        target_link = grid.locator(f'a[href*="Page${target}"]').first
-        await target_link.click()
+            next_link = table.locator('a[href*="Page$Next"]').first
+            if await next_link.count() == 0:
+                break
+            await next_link.click()
+        else:
+            target = min(candidates)
+            visited_page_numbers.add(target)
+            target_link = table.locator(f'a[href*="Page${target}"]').first
+            await target_link.click()
         try:
             await page.wait_for_function(
                 "([selector, oldHtml]) => document.querySelector(selector)?.outerHTML !== oldHtml",
