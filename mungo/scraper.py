@@ -200,6 +200,13 @@ async def _leer_todas_las_paginas(page) -> pd.DataFrame:
         "els => els.map((el, index) => ({index, id: el.id, name: el.name, value: el.value, "
         "options: Array.from(el.options).map(o => ({value: o.value, text: o.text.trim()}))}))"
     )
+    rows_page_controls = await page.locator("input, button, a").evaluate_all(
+        "els => els.map(el => ({tag: el.tagName, id: el.id, name: el.name, type: el.type || '', "
+        "value: el.value || '', text: (el.innerText || '').trim(), href: el.getAttribute('href'), "
+        "context: (el.parentElement?.innerText || '').trim()})).filter(x => "
+        "x.value === '100' || /rows? on page|next|page size/i.test(x.text + ' ' + x.context))"
+    )
+    logger.warning("Mungo control Rows on Page: %s", rows_page_controls)
     for info in select_info:
         numeric_options = []
         for option in info["options"]:
