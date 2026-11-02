@@ -120,8 +120,20 @@ async def _extraer_ordenes_mungo(
                 ).click()
                 await page.wait_for_timeout(5_000)
             result = await _leer_todas_las_paginas(page)
+            print(
+                "Mungo diagnóstico: "
+                f"filas_leídas={len(result)}, "
+                f"columnas={list(result.columns)}, "
+                f"filtro={date_filter}, "
+                f"desde={date_from.isoformat()}, hasta={date_to.isoformat()}"
+            )
             if date_filter == "start_date":
-                return filtrar_por_start_date(result, date_from, date_to)
+                filtered = filtrar_por_start_date(result, date_from, date_to)
+                print(
+                    "Mungo diagnóstico: "
+                    f"filas_coincidentes_Start_Date={len(filtered)}"
+                )
+                return filtered
             return result
         finally:
             if logged_in:
