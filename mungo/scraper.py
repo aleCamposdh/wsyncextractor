@@ -13,10 +13,13 @@ from .transformer import filtrar_por_start_date
 MUNGO_URL = "https://kova1.mungo.com/KovaMungo/desktopdefault.aspx?ReturnUrl=%2fKovaMungo%2f"
 MUNGO_PO_URL = (
     "https://kova1.mungo.com/KovaMungo/Production/Jobs/"
-    "JobPOList.aspx?qrefobjtype=JobPO&root=true&status=all"
+    "JobPOList.aspx?qrefobjtype=JobPO&root=true&"
+    "status=Released%7CRejected%7CNew%7CPublished%7CRevised%7CCompleted%7C"
+    "Paid%7CBeingFixed%7CConfirmed%7CWorkInProgress"
 )
 MUNGO_LOGOUT_URL = "https://kova1.mungo.com/KovaMungo/LogOut.aspx"
 ORDER_TABLE_SELECTOR = "#ctl00_GridContentJobPOGridJobPODataGrid_ctl00"
+ORDER_GRID_SELECTOR = "#ctl00_GridContentJobPOGridJobPODataGrid"
 
 DATE_FILTER_SELECTORS = {
     "released": (
@@ -116,18 +119,7 @@ async def _extraer_ordenes_mungo(
                     "#ctl00_GridContent__JobPOGrid__Filters_ImageGoFilterButton"
                 ).click()
                 await page.wait_for_timeout(5_000)
-            table = page.locator(ORDER_TABLE_SELECTOR)
-            await table.wait_for(state="visible", timeout=60_000)
-
-            table_html = await table.evaluate("element => element.outerHTML")
-            frames = pd.read_html(StringIO(table_html), header=0)
-            if not frames:
-                return pd.DataFrame()
-            result = frames[0]
-            result.columns = [
-                str(column).replace("\xa0", " ").strip()
-                for column in result.columns
-            ]
+            result = await _leer_todas_las_paginas(page)
             if date_filter == "start_date":
                 return filtrar_por_start_date(result, date_from, date_to)
             return result
@@ -138,6 +130,75 @@ async def _extraer_ordenes_mungo(
                 except Exception:
                     pass
             await browser.close()
+
+
+async def _leer_todas_las_paginas(page) -> pd.DataFrame:
+    """Lee todas las páginas de la grilla ASP.NET de Purchase Orders."""
+    from hashlib import sha1
+
+    rows: list[pd.DataFrame] = []
+    seen_pages: set[str] = set()
+    visited_page_numbers = {1}
+    grid = page.locator(ORDER_GRID_SELECTOR)
+    table = page.locator(ORDER_TABLE_SELECTOR)
+    await table.wait_for(state="visible", timeout=60_000)
+
+    while True:
+        table_html = await table.evaluate("element => element.outerHTML")
+        fingerprint = sha1(table_html.encode("utf-8")).hexdigest()
+        if fingerprint in seen_pages:
+            break
+        seen_pages.add(fingerprint)
+
+        frames = pd.read_html(StringIO(table_html), header=0)
+        if frames:
+            current = frames[0]
+            current.columns = [
+                str(column).replace("\xa0", " ").strip()
+                for column in current.columns
+            ]
+            rows.append(current)
+
+        # Los grids de WebForms suelen renderizar el paginador como links con
+        # href __doPostBack(..., "Page$N"). Buscar el siguiente número evita
+        # depender del texto/localización del botón.
+        page_links = await grid.locator(
+            'a[href*="__doPostBack"][href*="Page$"]'
+        ).evaluate_all(
+            "els => els.map(el => el.getAttribute('href'))"
+        )
+        import re
+
+        page_numbers = []
+        for href in page_links:
+            match = re.search(r"Page\$(\d+)", href or "")
+            if match:
+                page_numbers.append(int(match.group(1)))
+        candidates = [
+            number for number in page_numbers
+            if number > max(visited_page_numbers) and number not in visited_page_numbers
+        ]
+        if not candidates:
+            break
+
+        target = min(candidates)
+        visited_page_numbers.add(target)
+        target_link = grid.locator(f'a[href*="Page${target}"]').first
+        await target_link.click()
+        try:
+            await page.wait_for_function(
+                "([selector, oldHtml]) => document.querySelector(selector)?.outerHTML !== oldHtml",
+                arg=[ORDER_TABLE_SELECTOR, table_html],
+                timeout=30_000,
+            )
+        except Exception:
+            # Si el postback no cambió el HTML, el fingerprint detectará el
+            # ciclo y terminará sin duplicar las filas.
+            pass
+
+    if not rows:
+        return pd.DataFrame()
+    return pd.concat(rows, ignore_index=True).drop_duplicates().reset_index(drop=True)
 
 
 def ejecutar_extraccion_mungo(
