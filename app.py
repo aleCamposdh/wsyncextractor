@@ -1872,15 +1872,6 @@ else:
                     selected_to,
                     date_filter="start_date",
                 )
-                diagnostic = df_raw.attrs.get("mungo_diagnostic", {})
-                st.info(
-                    "Diagnóstico Mungo: "
-                    f"filas leídas de Kova={diagnostic.get('rows_read', 'desconocido')}; "
-                    f"filas que coinciden con Start Date={len(df_raw)}; "
-                    f"PO 50289142={diagnostic.get('po_50289142', 'no localizada en las filas leídas')}; "
-                    f"ejemplos de fechas={diagnostic.get('start_date_examples', [])}; "
-                    f"columnas={diagnostic.get('columns', 'desconocidas')}"
-                )
                 df_final = transformar_ordenes_mungo(df_raw)
                 if df_final.empty:
                     st.warning(t("mungo_no_orders_for_date"))

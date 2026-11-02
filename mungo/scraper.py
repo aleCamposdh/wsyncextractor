@@ -8,7 +8,7 @@ import pandas as pd
 from playwright.async_api import async_playwright
 
 import logger as _log
-from .transformer import filtrar_por_start_date, normalizar_fecha
+from .transformer import filtrar_por_start_date
 
 logger = _log.get("mungo.scraper")
 
@@ -122,56 +122,10 @@ async def _extraer_ordenes_mungo(
                 ).click()
                 await page.wait_for_timeout(5_000)
             result = await _leer_todas_las_paginas(page)
-            diagnostic_detail = {}
-            po_column = next(
-                (column for column in result.columns if str(column).strip().casefold() == "po#"),
-                None,
-            )
-            start_date_column = next(
-                (column for column in result.columns if str(column).strip().casefold() == "start date"),
-                None,
-            )
-            if po_column is not None and start_date_column is not None:
-                target_rows = result.loc[
-                    result[po_column].map(lambda value: str(value).strip().removesuffix(".0")) == "50289142",
-                    [po_column, start_date_column],
-                ]
-                diagnostic_detail["po_50289142"] = [
-                    {
-                        "raw_start_date": str(row[start_date_column]),
-                        "normalized_start_date": normalizar_fecha(row[start_date_column]),
-                    }
-                    for _, row in target_rows.iterrows()
-                ]
-            diagnostic_detail["start_date_examples"] = (
-                [
-                    {
-                        "raw": str(value),
-                        "normalized": normalizar_fecha(value),
-                    }
-                    for value in result[start_date_column].head(5)
-                ]
-                if start_date_column is not None else []
-            )
-            logger.warning(
-                "Mungo diagnóstico: filas_leídas=%s columnas=%s filtro=%s desde=%s hasta=%s detalle=%s",
-                len(result), list(result.columns), date_filter,
-                date_from.isoformat(), date_to.isoformat(), diagnostic_detail,
-            )
+            logger.info("Mungo: filas leídas de Kova=%s", len(result))
             if date_filter == "start_date":
                 filtered = filtrar_por_start_date(result, date_from, date_to)
-                filtered.attrs["mungo_diagnostic"] = {
-                    "rows_read": len(result),
-                    "columns": list(result.columns),
-                    "matching_rows": len(filtered),
-                    "date_from": date_from.isoformat(),
-                    "date_to": date_to.isoformat(),
-                    **diagnostic_detail,
-                }
-                logger.warning(
-                    "Mungo diagnóstico: filas_coincidentes_Start_Date=%s",
-                    len(filtered),
-                )
+                logger.info("Mungo: filas coincidentes con Start Date=%s", len(filtered))
                 return filtered
             return result
         finally:
@@ -186,6 +140,7 @@ async def _extraer_ordenes_mungo(
 async def _leer_todas_las_paginas(page) -> pd.DataFrame:
     """Lee todas las páginas de la grilla ASP.NET de Purchase Orders."""
     from hashlib import sha1
+    import re
 
     rows: list[pd.DataFrame] = []
     seen_pages: set[str] = set()
@@ -193,40 +148,59 @@ async def _leer_todas_las_paginas(page) -> pd.DataFrame:
     table = page.locator(ORDER_TABLE_SELECTOR)
     await table.wait_for(state="visible", timeout=60_000)
 
-    # Kova pagina esta grilla principalmente con "Rows on Page"; en algunas
-    # cuentas no renderiza links Page$N. Si existe una opción numérica mayor,
-    # selecciona el máximo antes de leer la tabla.
-    select_info = await page.locator("select").evaluate_all(
-        "els => els.map((el, index) => ({index, id: el.id, name: el.name, value: el.value, "
-        "options: Array.from(el.options).map(o => ({value: o.value, text: o.text.trim()}))}))"
+    # Kova limita inicialmente la grilla a 100 filas. El total está impreso
+    # debajo de la tabla; el textbox NumberOfRows permite pedirlas en una carga.
+    body_text = await page.locator("body").inner_text()
+    total_match = re.search(
+        r"Showing\s+\d+\s*\.\.\.\s*\d+\s+of\s+([\d,]+)\s+Purchase Orders",
+        body_text,
+        re.IGNORECASE,
     )
-    rows_page_controls = await page.locator("input, button, a").evaluate_all(
-        "els => els.map(el => ({tag: el.tagName, id: el.id, name: el.name, type: el.type || '', "
-        "value: el.value || '', text: (el.innerText || '').trim(), href: el.getAttribute('href'), "
-        "context: (el.parentElement?.innerText || '').trim()})).filter(x => "
-        "x.value === '100' || /rows? on page|next|page size/i.test(x.text + ' ' + x.context))"
-    )
-    logger.warning("Mungo control Rows on Page: %s", rows_page_controls)
-    for info in select_info:
-        numeric_options = []
-        for option in info["options"]:
-            import re
-            candidate = (option.get("value") or option.get("text") or "").strip()
-            if candidate.isdigit():
-                numeric_options.append((int(candidate), option.get("value"), option.get("text")))
-        values = {number for number, _, _ in numeric_options}
-        if 100 in values and max(values, default=0) > 100:
-            largest = max(numeric_options, key=lambda item: item[0])
-            logger.warning("Mungo Rows on Page: select=%s opciones=%s", info, numeric_options)
-            selector = page.locator("select").nth(info["index"])
+    rows_input = page.locator("#ctl00_GridContent__JobPOGrid_NumberOfRows")
+    if total_match and await rows_input.count():
+        total_orders = int(total_match.group(1).replace(",", ""))
+        try:
+            current_limit = int(await rows_input.input_value())
+        except ValueError:
+            current_limit = 0
+        logger.info(
+            "Mungo Rows on Page: total=%s límite_actual=%s",
+            total_orders, current_limit,
+        )
+        if total_orders > current_limit:
+            old_html = await table.evaluate("element => element.outerHTML")
+            await rows_input.fill(str(total_orders))
+            # El textbox actualiza la grilla al confirmar con Enter.
+            await rows_input.press("Enter")
             try:
-                await selector.select_option(value=largest[1])
-            except Exception:
-                await selector.select_option(label=largest[2])
-            await page.wait_for_timeout(3_000)
-            break
+                await page.wait_for_function(
+                    "([selector, oldHtml]) => document.querySelector(selector)?.outerHTML !== oldHtml",
+                    arg=[ORDER_TABLE_SELECTOR, old_html],
+                    timeout=30_000,
+                )
+                await table.wait_for(state="visible", timeout=30_000)
+            except Exception as error:
+                logger.warning(
+                    "Mungo Rows on Page: postback no confirmado (%s)",
+                    type(error).__name__,
+                )
+        updated_text = await page.locator("body").inner_text()
+        updated_match = re.search(
+            r"Showing\s+\d+\s*\.\.\.\s*\d+\s+of\s+([\d,]+)\s+Purchase Orders",
+            updated_text,
+            re.IGNORECASE,
+        )
+        logger.info(
+            "Mungo Rows on Page: valor_final=%s resumen=%s",
+            await rows_input.input_value(),
+            updated_match.group(0) if updated_match else "no localizado",
+        )
     else:
-        logger.warning("Mungo Rows on Page: no se encontró selector con opción 100 y mayor")
+        logger.warning(
+            "Mungo Rows on Page: total o textbox no localizado; total_match=%s input_count=%s",
+            total_match.group(0) if total_match else None,
+            await rows_input.count(),
+        )
 
     while True:
         table_html = await table.evaluate("element => element.outerHTML")
@@ -252,9 +226,6 @@ async def _leer_todas_las_paginas(page) -> pd.DataFrame:
         ).evaluate_all(
             "els => els.map(el => el.getAttribute('href'))"
         )
-        logger.warning("Mungo paginador: enlaces=%s", page_links)
-        import re
-
         page_numbers = []
         for href in page_links:
             match = re.search(r"Page\$(\d+)", href or "")
