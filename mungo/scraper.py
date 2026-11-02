@@ -212,11 +212,12 @@ async def _leer_todas_las_paginas(page) -> pd.DataFrame:
         # Los grids de WebForms suelen renderizar el paginador como links con
         # href __doPostBack(..., "Page$N"). Buscar el siguiente número evita
         # depender del texto/localización del botón.
-        page_links = await table.locator(
+        page_links = await page.locator(
             'a[href*="Page$"]'
         ).evaluate_all(
             "els => els.map(el => el.getAttribute('href'))"
         )
+        logger.warning("Mungo paginador: enlaces=%s", page_links)
         import re
 
         page_numbers = []
@@ -229,14 +230,14 @@ async def _leer_todas_las_paginas(page) -> pd.DataFrame:
             if number > max(visited_page_numbers) and number not in visited_page_numbers
         ]
         if not candidates:
-            next_link = table.locator('a[href*="Page$Next"]').first
+            next_link = page.locator('a[href*="Page$Next"]').first
             if await next_link.count() == 0:
                 break
             await next_link.click()
         else:
             target = min(candidates)
             visited_page_numbers.add(target)
-            target_link = table.locator(f'a[href*="Page${target}"]').first
+            target_link = page.locator(f'a[href*="Page${target}"]').first
             await target_link.click()
         try:
             await page.wait_for_function(
