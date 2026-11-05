@@ -115,6 +115,12 @@ def transformar_ordenes(df_raw: pd.DataFrame, config: str) -> pd.DataFrame:
             .str.strip()
         df['instruction'] = df['instruction'].apply(lambda x: SHINE_TASK_MAP.get(x, x))
 
+        # Lennar's export labels this service as ROUGH RECLEAN. For the
+        # exported order title, normalize that exact all-caps service name.
+        # Other labels (including "ROUGH - CLEAN") are left untouched.
+        if config == 'ShineAndBright':
+            df['instruction'] = df['instruction'].replace('ROUGH RECLEAN', 'ROUGH CLEAN')
+
         if config == 'Apex':
             df['instruction'] = df['instruction'].str.replace(r'^Concrete Labor -\s*', '', regex=True)
             for pattern, repl in APEX_INSTRUCTION_REGEX:
