@@ -43,6 +43,7 @@ from mungo.scraper import (
     probar_conexion_mungo,
 )
 from mungo.transformer import transformar_ordenes_mungo
+from order_history import exclude_exported, record_exported
 from jobber import storage, oauth
 from jobber.client import JobberClient, JobberAuthError
 from jobber.mappers import parse_total, validate_row
@@ -1926,6 +1927,7 @@ else:
                     date_filter="start_date",
                 )
                 df_final = transformar_ordenes_mungo(df_raw)
+                df_final, previously_exported = exclude_exported(df_final, "Mungo Homes")
                 if df_final.empty:
                     st.warning(t("mungo_no_orders_for_date"))
                     st.session_state.df_result = None
@@ -1940,6 +1942,8 @@ else:
                     st.session_state.df_source = t("source_mungo")
                     st.session_state.upload_report = None
                     st.success(t("success_extracted", n=len(df_final)))
+                    if previously_exported:
+                        st.info(f"Se omitieron {previously_exported} órdenes ya exportadas anteriormente.")
             except MungoAuthenticationError as error:
                 st.error(str(error))
             except Exception as error:
@@ -2044,6 +2048,8 @@ if (
             file_name=f"ordenes_{download_slug}.csv",
             mime="text/csv",
             use_container_width=True,
+            on_click=record_exported if st.session_state.df_source == t("source_mungo") else None,
+            args=(df_download, "Mungo Homes") if st.session_state.df_source == t("source_mungo") else None,
         )
     with col_xlsx:
         buffer = BytesIO()
@@ -2055,6 +2061,8 @@ if (
             file_name=f"ordenes_{download_slug}.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             use_container_width=True,
+            on_click=record_exported if st.session_state.df_source == t("source_mungo") else None,
+            args=(df_download, "Mungo Homes") if st.session_state.df_source == t("source_mungo") else None,
         )
 
     # ── Botón Subir a Jobber ──────────────────────────────────────────────────
