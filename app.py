@@ -43,7 +43,7 @@ from mungo.scraper import (
     probar_conexion_mungo,
 )
 from mungo.transformer import transformar_ordenes_mungo
-from order_history import exclude_exported, record_exported
+from order_history import split_exported, record_exported
 from jobber import storage, oauth
 from jobber.client import JobberClient, JobberAuthError
 from jobber.mappers import parse_total, validate_row
@@ -782,6 +782,8 @@ for key, default in [
     ("df_result",     None),
     ("df_editor",     None),   # DataFrame con columnas Subir + Ya subido
     ("df_source",     None),   # SupplyPro o Mungo Homes
+    ("df_keys",       None),   # Llaves de historial (Mungo) alineadas a df_editor
+    ("df_duplicates", None),   # Órdenes de Mungo ya exportadas antes
     ("upload_report", None),   # Resultados del último batch Jobber
 ]:
     if key not in st.session_state:
@@ -1927,28 +1929,51 @@ else:
                     date_filter="start_date",
                 )
                 df_final = transformar_ordenes_mungo(df_raw)
-                df_final, previously_exported = exclude_exported(df_final, "Mungo Homes")
+                df_final, df_dups, new_keys = split_exported(df_final, "Mungo Homes")
+                st.session_state.df_duplicates = df_dups if not df_dups.empty else None
                 if df_final.empty:
-                    st.warning(t("mungo_no_orders_for_date"))
+                    if df_dups.empty:
+                        st.warning(t("mungo_no_orders_for_date"))
+                    else:
+                        st.warning(
+                            f"No hay órdenes nuevas: las {len(df_dups)} encontradas ya se habían exportado."
+                        )
                     st.session_state.df_result = None
                     st.session_state.df_editor = None
                     st.session_state.df_source = None
+                    st.session_state.df_keys = None
                 else:
                     st.session_state.df_result = df_final
                     df_edit = df_final.copy()
                     df_edit.insert(0, t("col_upload"), True)
                     df_edit[t("col_uploaded")] = False
                     st.session_state.df_editor = df_edit
+                    st.session_state.df_keys = new_keys
                     st.session_state.df_source = t("source_mungo")
                     st.session_state.upload_report = None
                     st.success(t("success_extracted", n=len(df_final)))
-                    if previously_exported:
-                        st.info(f"Se omitieron {previously_exported} órdenes ya exportadas anteriormente.")
+                    if not df_dups.empty:
+                        st.info(f"{len(df_dups)} órdenes ya exportadas se muestran aparte (no entran al Excel).")
             except MungoAuthenticationError as error:
                 st.error(str(error))
             except Exception as error:
                 st.error(t("error_extraction", err=error))
 
+
+# ── Órdenes duplicadas (ya exportadas antes) ──────────────────────────────────
+if (
+    source_choice == t("source_mungo")
+    and st.session_state.df_duplicates is not None
+):
+    with st.expander(
+        f"♻️ Ya extraídas anteriormente ({len(st.session_state.df_duplicates)}) — no entran al Excel",
+        expanded=st.session_state.df_editor is None,
+    ):
+        st.dataframe(
+            st.session_state.df_duplicates,
+            use_container_width=True,
+            hide_index=True,
+        )
 
 # ── Tabla editable ────────────────────────────────────────────────────────────
 if (
@@ -2049,7 +2074,7 @@ if (
             mime="text/csv",
             use_container_width=True,
             on_click=record_exported if st.session_state.df_source == t("source_mungo") else None,
-            args=(df_download, "Mungo Homes") if st.session_state.df_source == t("source_mungo") else None,
+            args=(st.session_state.df_keys, "Mungo Homes") if st.session_state.df_source == t("source_mungo") else None,
         )
     with col_xlsx:
         buffer = BytesIO()
@@ -2062,7 +2087,7 @@ if (
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             use_container_width=True,
             on_click=record_exported if st.session_state.df_source == t("source_mungo") else None,
-            args=(df_download, "Mungo Homes") if st.session_state.df_source == t("source_mungo") else None,
+            args=(st.session_state.df_keys, "Mungo Homes") if st.session_state.df_source == t("source_mungo") else None,
         )
 
     # ── Botón Subir a Jobber ──────────────────────────────────────────────────
