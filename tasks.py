@@ -13,11 +13,11 @@ from database import get_supabase
 
 TASKS_TABLE = "worksync_tasks"
 TASK_ATTACHMENTS_BUCKET = "worksync-task-attachments"
-ASSIGNEES = ("Danna", "Karen", "Nia", "Tatiana")
+ASSIGNEES = ("Danna", "Karen", "Ara", "Tatiana")
 ASSIGNEE_COLORS = {
     "Danna": "#DB2777",
     "Karen": "#EA580C",
-    "Nia": "#7C3AED",
+    "Ara": "#EAB308",
     "Tatiana": "#2563EB",
 }
 PRIORITIES = ("Alta", "Media", "Baja")
