@@ -150,18 +150,33 @@ def transformar_ordenes(df_raw: pd.DataFrame, config: str) -> pd.DataFrame:
 
         # Seleccionar columnas finales y eliminar nan
         final = df[['Client Name', 'Job title Final', 'Full Property Address', 'total', 'Start Date']]
+        log(f"📊 Filas antes de filtros finales: {len(final)}")
+
+        def _log_descartadas(antes, despues, motivo):
+            descartadas = antes.loc[~antes.index.isin(despues.index)]
+            if len(descartadas) > 0:
+                log(f"⚠️ {len(descartadas)} fila(s) descartadas por: {motivo}")
+                for _, r in descartadas.head(10).iterrows():
+                    log(f"   - {r['Job title Final']} | total={r['total']}")
+
+        antes = final
         final = final[~final.apply(lambda row: row.astype(str).str.lower().eq('nan').any(), axis=1)]
+        _log_descartadas(antes, final, "valor 'nan' en alguna columna")
 
         # Filtrar filas con "No orders found" u otros textos inválidos en 'total'
+        antes = final
         final = final[
             ~final['total'].str.contains('No orders found', case=False, na=False) &
             ~final['total'].str.lower().str.contains('function|script|var |return', case=False, na=False)
         ]
+        _log_descartadas(antes, final, "texto inválido en 'total'")
 
         # Filtrar solo filas donde 'total' tenga formato de precio válido (contiene $ o es numérico)
+        antes = final
         final = final[
             final['total'].str.contains(r'[\$\d]', regex=True, na=False)
         ]
+        _log_descartadas(antes, final, "'total' sin formato de precio")
 
         log(f"✅ Procesamiento completado: {len(final)} órdenes")
         return final

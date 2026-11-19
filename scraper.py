@@ -13,6 +13,41 @@ def log(msg):
     sys.stderr.flush()
 
 
+TABLE_XPATH = '//th[contains(normalize-space(.), "Builder")]/ancestor::table'
+
+
+async def _contar_filas(page) -> int:
+    """Cuenta las filas (tr) de la tabla de órdenes; 0 si aún no existe."""
+    try:
+        return await page.locator(f'xpath={TABLE_XPATH}//tr').count()
+    except Exception:
+        return -1
+
+
+async def _esperar_tabla_estable(page, lecturas=3, intervalo_ms=1500, max_ms=45000):
+    """
+    Espera a que el número de filas de la tabla deje de cambiar durante
+    `lecturas` lecturas consecutivas. Solo espera: no altera los datos.
+    """
+    transcurrido = 0
+    previo = None
+    estables = 0
+    while transcurrido < max_ms:
+        actual = await _contar_filas(page)
+        if actual == previo and actual > 0:
+            estables += 1
+            if estables >= lecturas:
+                log(f"✅ Tabla estable con {actual} filas")
+                return actual
+        else:
+            estables = 1
+            previo = actual
+        await page.wait_for_timeout(intervalo_ms)
+        transcurrido += intervalo_ms
+    log(f"⚠️ La tabla no se estabilizó en {max_ms // 1000}s (última lectura: {previo} filas)")
+    return previo
+
+
 async def extraer_ordenes(username: str, password: str) -> pd.DataFrame:
     """
     Extrae las órdenes de SupplyPro usando credenciales específicas
@@ -206,9 +241,14 @@ async def extraer_ordenes(username: str, password: str) -> pd.DataFrame:
             print(f"✅ Filtro aplicado")
 
             # Aumentar filas por página para capturar todas en una sola página
-            try:
-                rpp = await page.query_selector('select[name="rowsPerPage"], select[name="rows_per_page"], select[name="RowsPerPage"]')
-                if rpp:
+            rpp_ok = False
+            for intento in range(1, 3):
+                try:
+                    rpp = await page.query_selector('select[name="rowsPerPage"], select[name="rows_per_page"], select[name="RowsPerPage"]')
+                    if not rpp:
+                        log(f"⚠️ Selector de filas por página NO encontrado (intento {intento}); puede haber paginación y quedar filas sin extraer")
+                        await page.wait_for_timeout(3000)
+                        continue
                     # Intentar con 200, si no existe probar con el valor más alto disponible
                     options = await rpp.query_selector_all('option')
                     values = [await o.get_attribute('value') for o in options]
@@ -217,9 +257,17 @@ async def extraer_ordenes(username: str, password: str) -> pd.DataFrame:
                         await rpp.select_option(value=target)
                         await page.wait_for_load_state('networkidle', timeout=30000)
                         await page.wait_for_timeout(3000)
-                        print(f"✅ Filas por página ajustado a {target}")
-            except Exception as rpp_err:
-                print(f"⚠️ No se pudo ajustar filas por página: {rpp_err}")
+                        log(f"✅ Filas por página ajustado a {target}")
+                        rpp_ok = True
+                        break
+                except Exception as rpp_err:
+                    log(f"⚠️ No se pudo ajustar filas por página (intento {intento}): {rpp_err}")
+                    await page.wait_for_timeout(3000)
+            if not rpp_ok:
+                log("⚠️ ADVERTENCIA: filas por página no se ajustó; la extracción podría estar incompleta")
+
+            # Esperar a que la tabla termine de cargar todas sus filas
+            await _esperar_tabla_estable(page)
 
             # Paso 9: Extraer tabla
             print(f"📊 Extrayendo tabla de órdenes...")
